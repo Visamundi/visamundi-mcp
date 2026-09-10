@@ -1,7 +1,7 @@
-import process from "node:process";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
+import type { McpServer } from "@modelcontextprotocol/server";
+import type { CredentialContext } from "../types.js";
+import { registerConnectTools } from "./connect.js";
 
 const { listVisas } = vi.hoisted(() => ({
   listVisas: vi.fn(),
@@ -11,46 +11,48 @@ vi.mock("../api.js", () => ({
   listVisas,
   getVisa: vi.fn(),
   getVisaRequirements: vi.fn(),
+  getPublicVaccines: vi.fn(),
   getVaccines: vi.fn(),
+  getPublicCustoms: vi.fn(),
   getCustoms: vi.fn(),
   listCountries: vi.fn(),
 }));
 
-import { createServer } from "../server/createServer.js";
-
 afterEach(() => {
   listVisas.mockReset();
-  delete process.env.CONNECT_API_MCP_KEY;
-  delete process.env.VISAMUNDI_TOKEN;
 });
 
 describe("connect tools", () => {
   it("falls back to the server token when the credential token is missing", async () => {
-    process.env.CONNECT_API_MCP_KEY = "server-token";
     listVisas.mockResolvedValueOnce([{ id: 123 }]);
 
-    const server = createServer({
+    const handlers = new Map<string, (...args: any[]) => Promise<unknown>>();
+    const server = {
+      registerTool(
+        name: string,
+        _config: unknown,
+        handler: unknown
+      ) {
+        handlers.set(name, handler as (...args: any[]) => Promise<unknown>);
+        return undefined as never;
+      },
+    } as unknown as Pick<McpServer, "registerTool">;
+    const context: CredentialContext = {
       credentialId: "cred-1",
       companyId: "company-1",
       allowedTools: ["list_visas"],
       connectPartnerName: null,
       connectConfigured: false,
       connectToken: null,
+    };
+    registerConnectTools(server, context, new Set(context.allowedTools), {
+      fallbackConnectToken: "server-token",
     });
 
-    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
-    const client = new Client({
-      name: "connect-tools-test",
-      version: "1.0.0",
-    });
+    const listVisasHandler = handlers.get("list_visas");
+    expect(listVisasHandler).toBeDefined();
 
-    await server.connect(serverTransport);
-    await client.connect(clientTransport);
-
-    await client.callTool({
-      name: "list_visas",
-      arguments: { destination: "th" },
-    });
+    await listVisasHandler?.({ destination: "th" });
 
     expect(listVisas).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -58,8 +60,5 @@ describe("connect tools", () => {
         destination: "th",
       })
     );
-
-    await client.close();
-    await server.close();
   });
 });
