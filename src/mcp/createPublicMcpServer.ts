@@ -5,6 +5,10 @@ import {
   type PublicToolCallEvent,
 } from "../tools/connect.js";
 import type { CredentialContext } from "../types.js";
+import {
+  PUBLIC_SERVER_INSTRUCTIONS,
+  registerPublicVisamundiDocs,
+} from "./registerVisamundiDocs.js";
 
 export const PUBLIC_TOOL_NAMES = [
   "list_visas",
@@ -37,11 +41,17 @@ export function createPublicMcpServer(
   options: PublicMcpServerOptions = {}
 ): McpServer {
   const context = createPublicCredentialContext(options.connectToken);
-  const server = new McpServer({
-    name: "visamundi-partner-mcp",
-    version: "2.0.0",
-  });
+  const server = new McpServer(
+    {
+      name: "visamundi-public-mcp",
+      version: "2.0.0",
+    },
+    {
+      instructions: PUBLIC_SERVER_INSTRUCTIONS,
+    }
+  );
 
+  registerPublicVisamundiDocs(server);
   registerConnectTools(server, context, new Set(context.allowedTools), {
     fallbackConnectToken: options.connectToken ?? null,
     publicCountryGuard: true,

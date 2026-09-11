@@ -4,6 +4,10 @@ import { registerConnectTools } from "../tools/connect.js";
 import { registerSupabaseTools } from "../tools/supabase.js";
 import type { CredentialContext, ToolName } from "../types.js";
 import { normalizeToolNames } from "../types.js";
+import {
+  PARTNER_SERVER_INSTRUCTIONS,
+  registerPartnerVisamundiDocs,
+} from "./registerVisamundiDocs.js";
 
 export interface PartnerMcpServerOptions {
   authInfo: AuthInfo;
@@ -35,11 +39,17 @@ export function createPartnerMcpServer({
 }: PartnerMcpServerOptions): McpServer {
   const context = authInfoToCredentialContext(authInfo);
   const allowedTools = new Set(context.allowedTools);
-  const server = new McpServer({
-    name: "visamundi-partner-mcp",
-    version: "2.0.0",
-  });
+  const server = new McpServer(
+    {
+      name: "visamundi-partner-mcp",
+      version: "2.0.0",
+    },
+    {
+      instructions: PARTNER_SERVER_INSTRUCTIONS,
+    }
+  );
 
+  registerPartnerVisamundiDocs(server);
   registerConnectTools(server, context, allowedTools, {
     fallbackConnectToken: fallbackConnectToken ?? null,
     publicCountryGuard: false,

@@ -13,6 +13,21 @@ function getRegisteredToolNames(server: unknown): string[] {
   return Object.keys(registeredTools ?? {}).sort();
 }
 
+function getRegisteredResourceNames(server: unknown): string[] {
+  const registeredResources = (
+    server as { _registeredResources?: Record<string, unknown> }
+  )._registeredResources;
+
+  return Object.keys(registeredResources ?? {}).sort();
+}
+
+function getRegisteredPromptNames(server: unknown): string[] {
+  const registeredPrompts = (server as { _registeredPrompts?: Record<string, unknown> })
+    ._registeredPrompts;
+
+  return Object.keys(registeredPrompts ?? {}).sort();
+}
+
 function createDatabaseStub(): DatabaseApi {
   return {
     resolveCredentialByApiKey: vi.fn(),
@@ -34,6 +49,15 @@ describe("MCP server factories", () => {
     const server = createPublicMcpServer({ connectToken: "public-token" });
 
     expect(getRegisteredToolNames(server)).toEqual([...PUBLIC_TOOL_NAMES].sort());
+    expect(getRegisteredResourceNames(server)).toEqual([
+      "visamundi://docs/country-codes",
+      "visamundi://docs/public-tool-guide",
+      "visamundi://docs/public-workflows",
+    ]);
+    expect(getRegisteredPromptNames(server)).toEqual([
+      "check-visa-requirements",
+      "prepare-trip-briefing",
+    ]);
   });
 
   it("creates the partner server with only credential-allowed tools", () => {
@@ -55,5 +79,11 @@ describe("MCP server factories", () => {
     });
 
     expect(getRegisteredToolNames(server)).toEqual(["get_company", "list_visas"]);
+    expect(getRegisteredResourceNames(server)).toEqual([
+      "visamundi://docs/country-codes",
+      "visamundi://docs/partner-tool-guide",
+      "visamundi://docs/partner-workflows",
+    ]);
+    expect(getRegisteredPromptNames(server)).toEqual(["review-travel-group"]);
   });
 });
