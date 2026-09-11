@@ -11,7 +11,11 @@
     "dev:worker": "wrangler dev",
     "dev:tsc": "tsc --watch",
     "deploy": "wrangler deploy",
-    "test": "vitest run"
+    "test": "vitest run",
+    "abuse:audit": "node scripts/abuse-simulation/audit-response-samples.mjs",
+    "abuse:get-visa": "node scripts/abuse-simulation/enumerate-get-visa.mjs",
+    "abuse:requirements": "node scripts/abuse-simulation/requirements-matrix.mjs",
+    "abuse:sustain": "node scripts/abuse-simulation/sustained-load.mjs"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.30.0",

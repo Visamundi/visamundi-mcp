@@ -2,6 +2,60 @@ const BASE_URL = "https://connect.visamundi.io/v3";
 const ALLOWED_PATH =
   /^\/(visas|visa\/\d+|countries|customs|vaccines|e\/visa\/requirements)$/;
 const REDACTED_FIELDS = new Set(["service_level"]);
+const PUBLIC_REDACTED_FIELDS = new Set([
+  "api_key",
+  "connect_token",
+  "credential_id",
+  "credentialId",
+  "internal_code",
+  "internal_notes",
+  "partner_token",
+  "refresh_token",
+  "secret",
+  "supplier_reference",
+  "token",
+]);
+const PUBLIC_REDACTED_KEY_PATTERNS = [/token/i, /secret/i, /^internal_/i];
+
+export const PUBLIC_CACHE_TTLS = {
+  get_customs: 60 * 60 * 24,
+  get_vaccines: 60 * 60 * 24,
+  list_visas: 60 * 60,
+  get_visa_requirements: 60 * 60,
+  get_visa: 60 * 30,
+} as const;
+
+export type PublicToolName = keyof typeof PUBLIC_CACHE_TTLS;
+
+export interface ConnectCache {
+  get(key: string): Promise<unknown | null>;
+  put(key: string, value: unknown, ttlSeconds: number): Promise<void>;
+}
+
+export interface FetchTelemetry {
+  cacheHit: boolean;
+  cacheKey?: string;
+  status: number;
+}
+
+export interface FetchVisamundiOptions {
+  cache?: ConnectCache;
+  cacheKey?: string;
+  cacheTtlSeconds?: number;
+  onComplete?: (telemetry: FetchTelemetry) => void;
+}
+
+export class ConnectApiError extends Error {
+  readonly status: number;
+  readonly clientMessage: string;
+
+  constructor(status: number, clientMessage: string) {
+    super(clientMessage);
+    this.name = "ConnectApiError";
+    this.status = status;
+    this.clientMessage = clientMessage;
+  }
+}
 
 export function sanitizeResponse(data: unknown): unknown {
   if (Array.isArray(data)) {
@@ -16,6 +70,43 @@ export function sanitizeResponse(data: unknown): unknown {
       }
       result[key] = sanitizeResponse(value);
     }
+    return result;
+  }
+
+  return data;
+}
+
+function shouldRedactPublicField(key: string): boolean {
+  if (PUBLIC_REDACTED_FIELDS.has(key)) {
+    return true;
+  }
+
+  return PUBLIC_REDACTED_KEY_PATTERNS.some((pattern) => pattern.test(key));
+}
+
+export function sanitizePublicResponse(
+  toolName: PublicToolName,
+  data: unknown
+): unknown {
+  if (Array.isArray(data)) {
+    return data.map((item) => sanitizePublicResponse(toolName, item));
+  }
+
+  if (data && typeof data === "object") {
+    const result: Record<string, unknown> = {};
+
+    for (const [key, value] of Object.entries(data)) {
+      if (shouldRedactPublicField(key)) {
+        continue;
+      }
+
+      result[key] = sanitizePublicResponse(toolName, value);
+    }
+
+    if (toolName === "get_visa" && "service_level" in result) {
+      delete result.service_level;
+    }
+
     return result;
   }
 
@@ -85,7 +176,8 @@ export function assertSingleCountryResponse(
 async function fetchVisamundi(
   path: string,
   token: string,
-  searchParams?: URLSearchParams
+  searchParams?: URLSearchParams,
+  options: FetchVisamundiOptions = {}
 ): Promise<unknown> {
   assertAllowedPath(path);
   if (!token) {
@@ -94,16 +186,60 @@ async function fetchVisamundi(
 
   const query = searchParams?.size ? `?${searchParams.toString()}` : "";
   const url = `${BASE_URL}${path}${query}`;
+  const { cache, cacheKey, cacheTtlSeconds, onComplete } = options;
+
+  if (cache && cacheKey) {
+    const cached = await cache.get(cacheKey);
+    if (cached !== null) {
+      onComplete?.({
+        cacheHit: true,
+        cacheKey,
+        status: 200,
+      });
+      return cached;
+    }
+  }
+
   const response = await fetch(url, {
     headers: { Authorization: `Bearer ${token}` },
   });
 
   if (!response.ok) {
     const body = await response.text().catch(() => "");
-    throw new Error(`Connect API request failed (${response.status}): ${body || response.statusText}`);
+    console.error(
+      JSON.stringify({
+        event: "connect_api_error",
+        path,
+        status: response.status,
+        body: body.slice(0, 500),
+      })
+    );
+    onComplete?.({
+      cacheHit: false,
+      cacheKey,
+      status: response.status,
+    });
+    throw new ConnectApiError(
+      response.status,
+      response.status === 404
+        ? "Requested record was not found."
+        : "Connect API unavailable."
+    );
   }
 
-  return sanitizeResponse(await response.json());
+  const sanitized = sanitizeResponse(await response.json());
+
+  if (cache && cacheKey && cacheTtlSeconds) {
+    await cache.put(cacheKey, sanitized, cacheTtlSeconds);
+  }
+
+  onComplete?.({
+    cacheHit: false,
+    cacheKey,
+    status: response.status,
+  });
+
+  return sanitized;
 }
 
 export interface ListVisasParams {
@@ -113,9 +249,18 @@ export interface ListVisasParams {
   stay_duration?: number;
   language?: string;
   token: string;
+  cache?: ConnectCache;
+  onComplete?: (telemetry: FetchTelemetry) => void;
 }
 
 export async function listVisas(params: ListVisasParams): Promise<unknown> {
+  const cacheKey = `list_visas:${JSON.stringify({
+    destination: params.destination.toUpperCase(),
+    language: params.language ?? null,
+    nationality: params.nationality?.toUpperCase() ?? null,
+    reason: params.reason ?? null,
+    stay_duration: params.stay_duration ?? null,
+  })}`;
   const searchParams = new URLSearchParams({
     destination: params.destination.toUpperCase(),
   });
@@ -133,13 +278,20 @@ export async function listVisas(params: ListVisasParams): Promise<unknown> {
     searchParams.set("language", params.language);
   }
 
-  return fetchVisamundi("/visas", params.token, searchParams);
+  return fetchVisamundi("/visas", params.token, searchParams, {
+    cache: params.cache,
+    cacheKey,
+    cacheTtlSeconds: PUBLIC_CACHE_TTLS.list_visas,
+    onComplete: params.onComplete,
+  });
 }
 
 export interface GetVisaParams {
   id: number;
   language?: string;
   token: string;
+  cache?: ConnectCache;
+  onComplete?: (telemetry: FetchTelemetry) => void;
 }
 
 export async function getVisa(params: GetVisaParams): Promise<unknown> {
@@ -148,7 +300,15 @@ export async function getVisa(params: GetVisaParams): Promise<unknown> {
     searchParams.set("language", params.language);
   }
 
-  return fetchVisamundi(`/visa/${params.id}`, params.token, searchParams);
+  return fetchVisamundi(`/visa/${params.id}`, params.token, searchParams, {
+    cache: params.cache,
+    cacheKey: `get_visa:${JSON.stringify({
+      id: params.id,
+      language: params.language ?? null,
+    })}`,
+    cacheTtlSeconds: PUBLIC_CACHE_TTLS.get_visa,
+    onComplete: params.onComplete,
+  });
 }
 
 export interface GetVisaRequirementsParams {
@@ -156,6 +316,8 @@ export interface GetVisaRequirementsParams {
   destination: string;
   language?: string;
   token: string;
+  cache?: ConnectCache;
+  onComplete?: (telemetry: FetchTelemetry) => void;
 }
 
 export async function getVisaRequirements(
@@ -170,12 +332,23 @@ export async function getVisaRequirements(
     searchParams.set("language", params.language);
   }
 
-  return fetchVisamundi("/e/visa/requirements", params.token, searchParams);
+  return fetchVisamundi("/e/visa/requirements", params.token, searchParams, {
+    cache: params.cache,
+    cacheKey: `get_visa_requirements:${JSON.stringify({
+      destination: params.destination.toUpperCase(),
+      language: params.language ?? null,
+      nationality: params.nationality.toUpperCase(),
+    })}`,
+    cacheTtlSeconds: PUBLIC_CACHE_TTLS.get_visa_requirements,
+    onComplete: params.onComplete,
+  });
 }
 
 export interface CountryCodeParams {
   country_code: string;
   token: string;
+  cache?: ConnectCache;
+  onComplete?: (telemetry: FetchTelemetry) => void;
 }
 
 export async function getVaccines(params: CountryCodeParams): Promise<unknown> {
@@ -183,7 +356,14 @@ export async function getVaccines(params: CountryCodeParams): Promise<unknown> {
     country_code: params.country_code.toUpperCase(),
   });
 
-  return fetchVisamundi("/vaccines", params.token, searchParams);
+  return fetchVisamundi("/vaccines", params.token, searchParams, {
+    cache: params.cache,
+    cacheKey: `get_vaccines:${JSON.stringify({
+      country_code: params.country_code.toUpperCase(),
+    })}`,
+    cacheTtlSeconds: PUBLIC_CACHE_TTLS.get_vaccines,
+    onComplete: params.onComplete,
+  });
 }
 
 export async function getPublicVaccines(
@@ -199,7 +379,14 @@ export async function getCustoms(params: CountryCodeParams): Promise<unknown> {
     country_code: params.country_code.toUpperCase(),
   });
 
-  return fetchVisamundi("/customs", params.token, searchParams);
+  return fetchVisamundi("/customs", params.token, searchParams, {
+    cache: params.cache,
+    cacheKey: `get_customs:${JSON.stringify({
+      country_code: params.country_code.toUpperCase(),
+    })}`,
+    cacheTtlSeconds: PUBLIC_CACHE_TTLS.get_customs,
+    onComplete: params.onComplete,
+  });
 }
 
 export async function getPublicCustoms(
