@@ -63,4 +63,19 @@ describe("api helpers", () => {
       )
     ).toThrow("Response was not scoped to requested country TH.");
   });
+
+  it("accepts nested data envelopes for the requested country", () => {
+    expect(() =>
+      assertSingleCountryResponse(
+        {
+          data: {
+            data: {
+              country_code: "TH",
+            },
+          },
+        },
+        "th"
+      )
+    ).not.toThrow();
+  });
 });

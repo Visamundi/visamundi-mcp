@@ -1,5 +1,9 @@
 import { McpServer } from "@modelcontextprotocol/server";
-import { registerConnectTools } from "../tools/connect.js";
+import type { ConnectCache } from "../api.js";
+import {
+  registerConnectTools,
+  type PublicToolCallEvent,
+} from "../tools/connect.js";
 import type { CredentialContext } from "../types.js";
 
 export const PUBLIC_TOOL_NAMES = [
@@ -12,6 +16,8 @@ export const PUBLIC_TOOL_NAMES = [
 
 export interface PublicMcpServerOptions {
   connectToken?: string | null;
+  cache?: ConnectCache;
+  onPublicToolCall?: (event: PublicToolCallEvent) => void;
 }
 
 export function createPublicCredentialContext(
@@ -39,6 +45,8 @@ export function createPublicMcpServer(
   registerConnectTools(server, context, new Set(context.allowedTools), {
     fallbackConnectToken: options.connectToken ?? null,
     publicCountryGuard: true,
+    cache: options.cache,
+    onPublicToolCall: options.onPublicToolCall,
   });
 
   return server;
