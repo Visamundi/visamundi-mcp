@@ -1,0 +1,6 @@
+CONNECT_API_MCP_KEY=
+# Optional fallback if CONNECT_API_MCP_KEY is unset
+# VISAMUNDI_TOKEN=
+
+# Optional comma-separated host allowlist for custom domains
+# MCP_ALLOWED_HOSTS=mcp.example.com

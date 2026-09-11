@@ -1,4 +1,3 @@
-import process from "node:process";
 import { z } from "zod";
 import {
   getCustoms,
@@ -12,32 +11,33 @@ import {
 } from "../api.js";
 import { toolError, toolResult } from "../toolResult.js";
 import type { CredentialContext, ToolName } from "../types.js";
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { McpServer } from "@modelcontextprotocol/server";
 
-function getFallbackConnectToken(): string | null {
-  return process.env.CONNECT_API_MCP_KEY ?? process.env.VISAMUNDI_TOKEN ?? null;
+type ToolRegistrar = Pick<McpServer, "registerTool">;
+
+export interface ConnectToolOptions {
+  fallbackConnectToken?: string | null;
+  publicCountryGuard?: boolean;
 }
 
-function requireConnectToken(context: CredentialContext): string {
-  const token = context.connectToken ?? getFallbackConnectToken();
+function requireConnectToken(
+  context: CredentialContext,
+  fallbackConnectToken?: string | null
+): string {
+  const token = context.connectToken ?? fallbackConnectToken ?? null;
 
   if (!token) {
-    throw new Error(
-      "No API token is configured for visa data requests."
-    );
+    throw new Error("No API token is configured for visa data requests.");
   }
 
   return token;
 }
 
-function isPublicContext(context: CredentialContext): boolean {
-  return context.credentialId === "public" && context.companyId === "public";
-}
-
 export function registerConnectTools(
-  server: McpServer,
+  server: ToolRegistrar,
   context: CredentialContext,
-  allowedTools: ReadonlySet<ToolName>
+  allowedTools: ReadonlySet<ToolName>,
+  options: ConnectToolOptions = {}
 ): void {
   if (allowedTools.has("list_visas")) {
     server.registerTool(
@@ -85,7 +85,7 @@ export function registerConnectTools(
         try {
           return toolResult(
             await listVisas({
-              token: requireConnectToken(context),
+              token: requireConnectToken(context, options.fallbackConnectToken),
               destination,
               nationality,
               reason,
@@ -121,7 +121,7 @@ export function registerConnectTools(
         try {
           return toolResult(
             await getVisa({
-              token: requireConnectToken(context),
+              token: requireConnectToken(context, options.fallbackConnectToken),
               id,
               language,
             })
@@ -164,7 +164,7 @@ export function registerConnectTools(
         try {
           return toolResult(
             await getVisaRequirements({
-              token: requireConnectToken(context),
+              token: requireConnectToken(context, options.fallbackConnectToken),
               nationality,
               destination,
               language,
@@ -196,9 +196,13 @@ export function registerConnectTools(
       },
       async ({ country_code }) => {
         try {
+          const getVaccinesForRequest = options.publicCountryGuard
+            ? getPublicVaccines
+            : getVaccines;
+
           return toolResult(
-            await (isPublicContext(context) ? getPublicVaccines : getVaccines)({
-              token: requireConnectToken(context),
+            await getVaccinesForRequest({
+              token: requireConnectToken(context, options.fallbackConnectToken),
               country_code,
             })
           );
@@ -228,9 +232,13 @@ export function registerConnectTools(
       },
       async ({ country_code }) => {
         try {
+          const getCustomsForRequest = options.publicCountryGuard
+            ? getPublicCustoms
+            : getCustoms;
+
           return toolResult(
-            await (isPublicContext(context) ? getPublicCustoms : getCustoms)({
-              token: requireConnectToken(context),
+            await getCustomsForRequest({
+              token: requireConnectToken(context, options.fallbackConnectToken),
               country_code,
             })
           );
@@ -254,7 +262,11 @@ export function registerConnectTools(
       },
       async () => {
         try {
-          return toolResult(await listCountries(requireConnectToken(context)));
+          return toolResult(
+            await listCountries(
+              requireConnectToken(context, options.fallbackConnectToken)
+            )
+          );
         } catch (error) {
           return toolError(error);
         }
