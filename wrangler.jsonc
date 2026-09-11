@@ -6,6 +6,38 @@
 	"compatibility_flags": [
 		"nodejs_compat"
 	],
+	// Optional abuse controls for the public MCP route.
+	// Replace namespace IDs / dataset name before enabling in production.
+	// "ratelimits": [
+	// 	{
+	// 		"name": "PUBLIC_ROUTE_RATE_LIMITER",
+	// 		"namespace_id": "1001",
+	// 		"simple": {
+	// 			"limit": 60,
+	// 			"period": 60
+	// 		}
+	// 	},
+	// 	{
+	// 		"name": "PUBLIC_GET_VISA_RATE_LIMITER",
+	// 		"namespace_id": "1002",
+	// 		"simple": {
+	// 			"limit": 10,
+	// 			"period": 60
+	// 		}
+	// 	}
+	// ],
+	// "kv_namespaces": [
+	// 	{
+	// 		"binding": "PUBLIC_MCP_KEYS",
+	// 		"id": "<PUBLIC_MCP_KEYS_KV_ID>"
+	// 	}
+	// ],
+	// "analytics_engine_datasets": [
+	// 	{
+	// 		"binding": "MCP_ANALYTICS",
+	// 		"dataset": "visamundi_mcp_public_route"
+	// 	}
+	// ],
 	"hyperdrive": [
 		{
 			"binding": "HYPERDRIVE",

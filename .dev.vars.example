@@ -2,5 +2,20 @@ CONNECT_API_MCP_KEY=
 # Optional fallback if CONNECT_API_MCP_KEY is unset
 # VISAMUNDI_TOKEN=
 
-# Optional comma-separated host allowlist for custom domains
+# Optional public-route auth controls
+# Set to false in production unless you intentionally run the route fully open.
+# ALLOW_ANONYMOUS_PUBLIC=true
+# PUBLIC_MCP_REQUIRE_API_KEY=false
+#
+# Optional per-integrator API key registry (KV binding required in Cloudflare).
+# Keys are stored by sha256 hash. Example value:
+# {"id":"demo-client"}
+#
+# Optional host allowlist for custom domains
 # MCP_ALLOWED_HOSTS=mcp.example.com
+#
+# Optional deployment-only bindings:
+# - PUBLIC_ROUTE_RATE_LIMITER
+# - PUBLIC_GET_VISA_RATE_LIMITER
+# - PUBLIC_MCP_KEYS
+# - MCP_ANALYTICS
