@@ -1,23 +1,16 @@
 import { z } from "zod";
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import {
-  getAffiliateStats,
-  getCompany,
-  getDeliveryWindow,
-  getProcessingLoad,
-  getReferredApplication,
-  getTravelGroup,
-  listInvoices,
-  listReferredApplications,
-  listTravelGroups,
-} from "../db.js";
+import type { McpServer } from "@modelcontextprotocol/server";
+import type { DatabaseApi } from "../db.js";
 import { toolError, toolResult } from "../toolResult.js";
 import type { CredentialContext, ToolName } from "../types.js";
 
+type ToolRegistrar = Pick<McpServer, "registerTool">;
+
 export function registerSupabaseTools(
-  server: McpServer,
+  server: ToolRegistrar,
   context: CredentialContext,
-  allowedTools: ReadonlySet<ToolName>
+  allowedTools: ReadonlySet<ToolName>,
+  db: DatabaseApi
 ): void {
   if (allowedTools.has("get_company")) {
   server.registerTool(
@@ -32,7 +25,7 @@ export function registerSupabaseTools(
     },
     async () => {
       try {
-        return toolResult(await getCompany(context.credentialId));
+        return toolResult(await db.getCompany(context.credentialId));
       } catch (error) {
         return toolError(error);
       }
@@ -58,7 +51,7 @@ export function registerSupabaseTools(
     async ({ limit, offset }) => {
       try {
         return toolResult(
-          await listTravelGroups(context.credentialId, limit ?? 25, offset ?? 0)
+          await db.listTravelGroups(context.credentialId, limit ?? 25, offset ?? 0)
         );
       } catch (error) {
         return toolError(error);
@@ -86,7 +79,7 @@ export function registerSupabaseTools(
     },
     async ({ travel_group_id }) => {
       try {
-        const travelGroup = await getTravelGroup(
+        const travelGroup = await db.getTravelGroup(
           context.credentialId,
           travel_group_id
         );
@@ -122,7 +115,7 @@ export function registerSupabaseTools(
     async ({ limit, offset }) => {
       try {
         return toolResult(
-          await listReferredApplications(
+          await db.listReferredApplications(
             context.credentialId,
             limit ?? 25,
             offset ?? 0
@@ -156,7 +149,7 @@ export function registerSupabaseTools(
     },
     async ({ referred_application_id }) => {
       try {
-        const application = await getReferredApplication(
+        const application = await db.getReferredApplication(
           context.credentialId,
           referred_application_id
         );
@@ -192,7 +185,7 @@ export function registerSupabaseTools(
     async ({ limit, offset }) => {
       try {
         return toolResult(
-          await listInvoices(context.credentialId, limit ?? 25, offset ?? 0)
+          await db.listInvoices(context.credentialId, limit ?? 25, offset ?? 0)
         );
       } catch (error) {
         return toolError(error);
@@ -222,7 +215,7 @@ export function registerSupabaseTools(
     },
     async ({ country_code, visa_id }) => {
       try {
-        return toolResult(await getProcessingLoad(country_code, visa_id));
+        return toolResult(await db.getProcessingLoad(country_code, visa_id));
       } catch (error) {
         return toolError(error);
       }
@@ -251,7 +244,7 @@ export function registerSupabaseTools(
     },
     async ({ record_id }) => {
       try {
-        const result = await getDeliveryWindow(context.credentialId, record_id);
+        const result = await db.getDeliveryWindow(context.credentialId, record_id);
         return toolResult(result ?? { status: "not_found" });
       } catch (error) {
         return toolError(error);
@@ -277,7 +270,7 @@ export function registerSupabaseTools(
     },
     async ({ from, to }) => {
       try {
-        return toolResult(await getAffiliateStats(context.credentialId, from, to));
+        return toolResult(await db.getAffiliateStats(context.credentialId, from, to));
       } catch (error) {
         return toolError(error);
       }

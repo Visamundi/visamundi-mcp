@@ -1,0 +1,15 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "visamundi-visa-mcp",
+	"main": "src/worker/index.ts",
+	"compatibility_date": "2026-09-10",
+	"compatibility_flags": [
+		"nodejs_compat"
+	],
+	"hyperdrive": [
+		{
+			"binding": "HYPERDRIVE",
+			"id": "46b1e3d89ca646f99448d4aed9c01375"
+		}
+	]
+}
