@@ -1,3 +1,5 @@
+import type { ToolName } from "../../types.js";
+
 export const PUBLIC_SERVER_INSTRUCTIONS = `
 You are connected to the Visamundi public MCP server.
 
@@ -33,7 +35,27 @@ Recommended workflow:
 Country codes must be ISO 3166-1 alpha-2 or alpha-3.
 Record UUIDs must come from list_travel_groups or list_referred_applications.
 Never guess travel_group_id, referred_application_id, or record_id values.
+
+Tool availability:
+- tools/list is authoritative for this connection.
+- If a tool appears in Visamundi docs but not in tools/list, it is not enabled for this credential. This commonly means it was disabled on your Visamundi partner MCP access page or was never granted.
+- Do not retry with alternate routes or invent tool names. Tell the user to re-enable the tool on the MCP access page and reconnect if needed.
 `.trim();
+
+export function buildPartnerServerInstructions(
+  allowedTools: readonly ToolName[]
+): string {
+  const enabledTools = [...allowedTools].sort((left, right) =>
+    left.localeCompare(right)
+  );
+
+  return [
+    PARTNER_SERVER_INSTRUCTIONS,
+    `Enabled tools for this connection: ${
+      enabledTools.length > 0 ? enabledTools.join(", ") : "none"
+    }.`,
+  ].join("\n\n");
+}
 
 export const COUNTRY_CODES_GUIDE = `# Country and language codes
 
@@ -109,6 +131,15 @@ Required:
 `.trim();
 
 export const PARTNER_TOOL_GUIDE = `# Visamundi partner tool guide
+
+## Tool availability
+Use tools/list as the source of truth for the current connection.
+
+If a tool appears in these docs but not in tools/list, it is not enabled for this credential. That usually means it was disabled on your Visamundi partner MCP access page or was never granted.
+
+Do not invent missing tool names or keep retrying. Ask the user to re-enable the tool on the MCP access page and reconnect if needed.
+
+Connect tools and portal tools can be enabled independently for the same credential.
 
 ## Connect tools
 Partner credentials may include some or all Connect tools:

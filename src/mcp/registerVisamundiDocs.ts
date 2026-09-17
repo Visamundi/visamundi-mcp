@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/server";
 import {
+  buildPartnerServerInstructions,
   COUNTRY_CODES_GUIDE,
   PARTNER_SERVER_INSTRUCTIONS,
   PARTNER_TOOL_GUIDE,
@@ -197,4 +198,8 @@ export function registerPartnerVisamundiDocs(server: DocServer): void {
   );
 }
 
-export { PUBLIC_SERVER_INSTRUCTIONS, PARTNER_SERVER_INSTRUCTIONS };
+export {
+  buildPartnerServerInstructions,
+  PUBLIC_SERVER_INSTRUCTIONS,
+  PARTNER_SERVER_INSTRUCTIONS,
+};

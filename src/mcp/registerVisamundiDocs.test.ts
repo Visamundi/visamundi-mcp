@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { McpServer } from "@modelcontextprotocol/server";
 import {
+  buildPartnerServerInstructions,
   registerPartnerVisamundiDocs,
   registerPublicVisamundiDocs,
 } from "./registerVisamundiDocs.js";
@@ -78,5 +79,20 @@ describe("registerVisamundiDocs", () => {
     const result = await entry.readCallback(new URL("visamundi://docs/country-codes"));
 
     expect(result.contents[0]?.text).toContain("ISO 3166-1");
+  });
+
+  it("builds partner instructions with access-page guidance and enabled tools", () => {
+    const instructions = buildPartnerServerInstructions([
+      "list_visas",
+      "get_company",
+      "get_visa",
+    ]);
+
+    expect(instructions).toContain(
+      "disabled on your Visamundi partner MCP access page"
+    );
+    expect(instructions).toContain(
+      "Enabled tools for this connection: get_company, get_visa, list_visas."
+    );
   });
 });

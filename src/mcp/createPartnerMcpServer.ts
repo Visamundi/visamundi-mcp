@@ -5,7 +5,7 @@ import { registerSupabaseTools } from "../tools/supabase.js";
 import type { CredentialContext, ToolName } from "../types.js";
 import { normalizeToolNames } from "../types.js";
 import {
-  PARTNER_SERVER_INSTRUCTIONS,
+  buildPartnerServerInstructions,
   registerPartnerVisamundiDocs,
 } from "./registerVisamundiDocs.js";
 
@@ -45,7 +45,7 @@ export function createPartnerMcpServer({
       version: "2.0.0",
     },
     {
-      instructions: PARTNER_SERVER_INSTRUCTIONS,
+      instructions: buildPartnerServerInstructions(context.allowedTools),
     }
   );
 
