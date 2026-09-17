@@ -16,7 +16,8 @@ export function registerSupabaseTools(
   server.registerTool(
     "get_company",
     {
-      description: "Get the partner company bound to the current MCP credential.",
+      description:
+        "Return the partner company profile bound to the current credential. Call this first when you need account context before using other partner portal tools.",
       annotations: {
         readOnlyHint: true,
         openWorldHint: false,
@@ -38,7 +39,7 @@ export function registerSupabaseTools(
     "list_travel_groups",
     {
       description:
-        "List B2B travel groups you manage in the partner portal.",
+        "List B2B travel groups managed by the current partner account. Use before get_travel_group or get_delivery_window when you need a travel_group_id.",
       annotations: {
         readOnlyHint: true,
         openWorldHint: false,
@@ -65,7 +66,7 @@ export function registerSupabaseTools(
     "get_travel_group",
     {
       description:
-        "Get one B2B travel group with traveler details, invoice metadata, and partner-visible fields.",
+        "Fetch one managed travel group with traveler details, invoice metadata, and partner-visible operational fields. Requires a travel_group_id from list_travel_groups.",
       annotations: {
         readOnlyHint: true,
         openWorldHint: false,
@@ -102,7 +103,7 @@ export function registerSupabaseTools(
     "list_referred_applications",
     {
       description:
-        "List applications generated through your affiliate links from the Referred Applications page.",
+        "List referred applications generated through the partner's affiliate links. Use before get_referred_application when you need a referred_application_id.",
       annotations: {
         readOnlyHint: true,
         openWorldHint: false,
@@ -133,7 +134,7 @@ export function registerSupabaseTools(
     "get_referred_application",
     {
       description:
-        "Get one referred application generated through your affiliate links, with traveler details and invoice metadata.",
+        "Fetch one referred application with traveler details and invoice metadata. Requires a referred_application_id from list_referred_applications.",
       annotations: {
         readOnlyHint: true,
         openWorldHint: false,
@@ -172,7 +173,7 @@ export function registerSupabaseTools(
     "list_invoices",
     {
       description:
-        "List invoice metadata for travel groups and referred applications visible to your account. Each row includes a record_type.",
+        "List invoice metadata for travel groups and referred applications visible to the current partner account. Each row includes record_type to identify the source record.",
       annotations: {
         readOnlyHint: true,
         openWorldHint: false,
@@ -199,7 +200,7 @@ export function registerSupabaseTools(
     "get_processing_load",
     {
       description:
-        "Get the average processing load for a destination country and optional visa id.",
+        "Return average processing load for a destination country and optional visa id. Use when estimating how busy processing is for a route or product.",
       annotations: {
         readOnlyHint: true,
         openWorldHint: false,
@@ -228,7 +229,7 @@ export function registerSupabaseTools(
     "get_delivery_window",
     {
       description:
-        "Calculate the estimated delivery window for a travel group or referred application using processing-load averages and arrival date.",
+        "Estimate the delivery window for a travel group or referred application using processing-load averages and arrival date. Requires record_id from list_travel_groups or list_referred_applications.",
       annotations: {
         readOnlyHint: true,
         openWorldHint: false,
@@ -258,7 +259,7 @@ export function registerSupabaseTools(
     "get_affiliate_stats",
     {
       description:
-        "Get click and conversion aggregates for the current partner company over an optional date range.",
+        "Return click and conversion aggregates for the current partner company over an optional date range. Use for affiliate performance reporting.",
       annotations: {
         readOnlyHint: true,
         openWorldHint: false,

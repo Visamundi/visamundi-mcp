@@ -24,8 +24,14 @@ Cloudflare Worker MCP server for Visamundi public visa data and partner-scoped t
   - `get_delivery_window`
   - `get_affiliate_stats`
   - Partner credentials may also include any of the public connect tools above.
+  - If a documented partner tool is missing for an agent, it may be disabled on the credential's Visamundi partner MCP access page; the server instructions include the enabled tool list for that connection.
 
 The Worker uses Cloudflare Hyperdrive for Postgres access and `createMcpHandler` for stateless MCP transport.
+
+Agents can also fetch MCP resources and prompts from the server:
+- Resources: tool guides, country-code reference, and example workflows (`visamundi://docs/...`)
+- Prompts: reusable workflows such as `check-visa-requirements` and `review-travel-group`
+- Server instructions: route-specific guidance injected by MCP clients that support them
 
 ## Install
 

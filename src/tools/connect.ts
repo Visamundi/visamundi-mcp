@@ -130,7 +130,7 @@ export function registerConnectTools(
       "list_visas",
       {
         description:
-          "List visa products for a destination, optionally filtered by nationality, reason, stay duration, or language.",
+          "Discover visa products available for a destination. Use after you know the destination country; optionally narrow results by traveller nationality, trip reason, minimum stay length, or response language. Prefer this before get_visa when the user has not chosen a product yet.",
         annotations: {
           readOnlyHint: true,
           openWorldHint: false,
@@ -198,7 +198,8 @@ export function registerConnectTools(
     server.registerTool(
       "get_visa",
       {
-        description: "Get full details for a single visa product by its numeric ID.",
+        description:
+          "Fetch full details for one visa product by numeric ID. Use after list_visas when the user selected a product or when you already have the product ID.",
         annotations: {
           readOnlyHint: true,
           openWorldHint: false,
@@ -245,7 +246,7 @@ export function registerConnectTools(
       "get_visa_requirements",
       {
         description:
-          "Get visa requirements for a traveller nationality and destination.",
+          "Check whether a visa is required and what rule applies for a traveller nationality visiting a destination. Use this first for questions like 'Do I need a visa?' before listing or comparing products.",
         annotations: {
           readOnlyHint: true,
           openWorldHint: false,
@@ -298,7 +299,8 @@ export function registerConnectTools(
     server.registerTool(
       "get_vaccines",
       {
-        description: "Get vaccine guidance for a destination country.",
+        description:
+          "Return vaccination guidance for a destination country. Use for health-entry questions after you know the destination ISO code.",
         annotations: {
           readOnlyHint: true,
           openWorldHint: false,
@@ -347,7 +349,8 @@ export function registerConnectTools(
     server.registerTool(
       "get_customs",
       {
-        description: "Get customs information for a destination country.",
+        description:
+          "Return customs and import rules for a destination country. Use for baggage, restricted goods, and entry-declaration questions.",
         annotations: {
           readOnlyHint: true,
           openWorldHint: false,
@@ -396,7 +399,8 @@ export function registerConnectTools(
     server.registerTool(
       "list_countries",
       {
-        description: "List available countries.",
+        description:
+          "List supported destination and nationality countries from Visamundi Connect. Use when you need valid country codes before calling other Connect tools. Available on partner routes only.",
         annotations: {
           readOnlyHint: true,
           openWorldHint: false,
