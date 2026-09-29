@@ -6,6 +6,7 @@ import type {
   ProcessingLoadRow,
   ReferredApplicationSummaryRow,
   ResolvedCredentialRow,
+  TravelGroupListItem,
   TravelGroupSummaryRow,
 } from "./types.js";
 import { normalizeToolNames } from "./types.js";
@@ -20,7 +21,7 @@ export interface DatabaseApi {
     credentialId: string,
     limit?: number,
     offset?: number
-  ): Promise<TravelGroupSummaryRow[]>;
+  ): Promise<TravelGroupListItem[]>;
   getTravelGroup(
     credentialId: string,
     travelGroupId: string
@@ -103,6 +104,66 @@ async function callValue<T>(
   return result.rows[0]?.value as T;
 }
 
+// The group-level `status` is the form status (almost always "draft"); the real
+// processing state lives on each traveler as `backoffice_status`.
+export function summarizeTravelerStatuses(
+  statuses: readonly (string | null)[]
+): Pick<TravelGroupListItem, "processing_status" | "traveler_status_counts"> {
+  const counts: Record<string, number> = {};
+
+  for (const status of statuses) {
+    if (status) {
+      counts[status] = (counts[status] ?? 0) + 1;
+    }
+  }
+
+  const distinct = Object.keys(counts);
+
+  return {
+    processing_status:
+      distinct.length === 0 ? null : distinct.length === 1 ? distinct[0] : "mixed",
+    traveler_status_counts: counts,
+  };
+}
+
+// Reuses mcp_get_travel_group so the credential scoping stays in the database.
+const TRAVELER_STATUSES_SQL = `
+select g.id::text as travel_group_id,
+       coalesce(
+         (select jsonb_agg(t ->> 'backoffice_status')
+            from jsonb_array_elements(
+              coalesce((public.mcp_get_travel_group($1, g.id))::jsonb -> 'travelers', '[]'::jsonb)
+            ) as t),
+         '[]'::jsonb
+       ) as statuses
+  from unnest($2::uuid[]) as g(id)`;
+
+async function withTravelerStatuses(
+  db: Queryable,
+  credentialId: string,
+  rows: TravelGroupSummaryRow[]
+): Promise<TravelGroupListItem[]> {
+  if (rows.length === 0) {
+    return [];
+  }
+
+  const result = await db.query<{
+    travel_group_id: string;
+    statuses: (string | null)[];
+  }>(TRAVELER_STATUSES_SQL, [
+    credentialId,
+    rows.map((row) => row.travel_group_id),
+  ]);
+  const statusesById = new Map(
+    result.rows.map((row) => [row.travel_group_id, row.statuses])
+  );
+
+  return rows.map((row) => ({
+    ...row,
+    ...summarizeTravelerStatuses(statusesById.get(row.travel_group_id) ?? []),
+  }));
+}
+
 export function hashApiKey(apiKey: string): string {
   return createHash("sha256").update(apiKey).digest("hex");
 }
@@ -161,14 +222,15 @@ export function createDatabaseApi(connectionString: string): DatabaseApi {
       credentialId: string,
       limit = 25,
       offset = 0
-    ): Promise<TravelGroupSummaryRow[]> {
-      return withDbClient(connectionString, (db) =>
-        callRows<TravelGroupSummaryRow>(db, "mcp_list_travel_groups", [
-          credentialId,
-          limit,
-          offset,
-        ])
-      );
+    ): Promise<TravelGroupListItem[]> {
+      return withDbClient(connectionString, async (db) => {
+        const rows = await callRows<TravelGroupSummaryRow>(
+          db,
+          "mcp_list_travel_groups",
+          [credentialId, limit, offset]
+        );
+        return withTravelerStatuses(db, credentialId, rows);
+      });
     },
 
     async getTravelGroup(
