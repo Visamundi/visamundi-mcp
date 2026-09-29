@@ -15,7 +15,16 @@ const PUBLIC_REDACTED_FIELDS = new Set([
   "supplier_reference",
   "token",
 ]);
-const PUBLIC_REDACTED_KEY_PATTERNS = [/token/i, /secret/i, /^internal_/i];
+const PUBLIC_REDACTED_KEY_PATTERNS = [
+  /token/i,
+  /secret/i,
+  /^internal_/i,
+  // Provenance: record authors, update/verification dates and data sources.
+  /^(date|user)_(created|updated)$/i,
+  /^(created|updated|modified|verified|reviewed|checked|published)_(at|on|by|date)$/i,
+  /^last_(update|updated|modified|checked|verified|reviewed)/i,
+  /(^|_)sources?($|_)/i,
+];
 
 export const PUBLIC_CACHE_TTLS = {
   get_customs: 60 * 60 * 24,
