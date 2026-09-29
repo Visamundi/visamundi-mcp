@@ -114,6 +114,28 @@ async function getConnectTokenWithDb(
   return callValue<string | null>(db, "mcp_get_connect_token", [credentialId]);
 }
 
+async function credentialFromResolvedRow(
+  db: Queryable,
+  row: ResolvedCredentialRow | undefined
+): Promise<CredentialContext | null> {
+  if (!row) {
+    return null;
+  }
+
+  const connectToken = row.connect_configured
+    ? await getConnectTokenWithDb(db, row.credential_id)
+    : null;
+
+  return {
+    credentialId: row.credential_id,
+    companyId: row.company_id,
+    allowedTools: normalizeToolNames(row.allowed_tools ?? []),
+    connectPartnerName: row.connect_partner_name,
+    connectConfigured: row.connect_configured,
+    connectToken,
+  };
+}
+
 export function createDatabaseApi(connectionString: string): DatabaseApi {
   return {
     async resolveCredentialByApiKey(
@@ -126,22 +148,7 @@ export function createDatabaseApi(connectionString: string): DatabaseApi {
           [hashApiKey(apiKey)]
         );
 
-        if (!row) {
-          return null;
-        }
-
-        const connectToken = row.connect_configured
-          ? await getConnectTokenWithDb(db, row.credential_id)
-          : null;
-
-        return {
-          credentialId: row.credential_id,
-          companyId: row.company_id,
-          allowedTools: normalizeToolNames(row.allowed_tools ?? []),
-          connectPartnerName: row.connect_partner_name,
-          connectConfigured: row.connect_configured,
-          connectToken,
-        };
+        return credentialFromResolvedRow(db, row);
       });
     },
 
