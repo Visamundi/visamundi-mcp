@@ -6,15 +6,17 @@ import type {
   ProcessingLoadRow,
   ReferredApplicationSummaryRow,
   ResolvedCredentialRow,
+  UserResolvedCredentialRow,
   TravelGroupListItem,
   TravelGroupSummaryRow,
 } from "./types.js";
-import { normalizeToolNames } from "./types.js";
+import { grantedPartnerTools } from "./types.js";
 
 type Queryable = Pick<Client, "query">;
 
 export interface DatabaseApi {
   resolveCredentialByApiKey(apiKey: string): Promise<CredentialContext | null>;
+  resolveCredentialByUserId(userId: string): Promise<CredentialContext | null>;
   getConnectToken(credentialId: string): Promise<string | null>;
   getCompany(credentialId: string): Promise<unknown>;
   listTravelGroups(
@@ -175,6 +177,28 @@ async function getConnectTokenWithDb(
   return callValue<string | null>(db, "mcp_get_connect_token", [credentialId]);
 }
 
+async function credentialFromResolvedRow(
+  db: Queryable,
+  row: ResolvedCredentialRow | undefined
+): Promise<CredentialContext | null> {
+  if (!row) {
+    return null;
+  }
+
+  const connectToken = row.connect_configured
+    ? await getConnectTokenWithDb(db, row.credential_id)
+    : null;
+
+  return {
+    credentialId: row.credential_id,
+    companyId: row.company_id,
+    allowedTools: grantedPartnerTools(row.company_id),
+    connectPartnerName: row.connect_partner_name,
+    connectConfigured: row.connect_configured,
+    connectToken,
+  };
+}
+
 export function createDatabaseApi(connectionString: string): DatabaseApi {
   return {
     async resolveCredentialByApiKey(
@@ -187,22 +211,41 @@ export function createDatabaseApi(connectionString: string): DatabaseApi {
           [hashApiKey(apiKey)]
         );
 
+        return credentialFromResolvedRow(db, row);
+      });
+    },
+
+    async resolveCredentialByUserId(
+      userId: string
+    ): Promise<CredentialContext | null> {
+      return withDbClient(connectionString, async (db) => {
+        const [row] = await callRows<UserResolvedCredentialRow>(
+          db,
+          "mcp_resolve_credential_for_user",
+          [userId]
+        );
+
         if (!row) {
           return null;
         }
 
-        const connectToken = row.connect_configured
-          ? await getConnectTokenWithDb(db, row.credential_id)
-          : null;
+        if (!row.credential_id) {
+          // Eligible account without a company (e.g. some admins): no
+          // company-scoped data, only the tools that need no company.
+          return {
+            credentialId: "",
+            companyId: "",
+            allowedTools: grantedPartnerTools(null),
+            connectPartnerName: null,
+            connectConfigured: false,
+            connectToken: null,
+          };
+        }
 
-        return {
-          credentialId: row.credential_id,
-          companyId: row.company_id,
-          allowedTools: normalizeToolNames(row.allowed_tools ?? []),
-          connectPartnerName: row.connect_partner_name,
-          connectConfigured: row.connect_configured,
-          connectToken,
-        };
+        return credentialFromResolvedRow(db, {
+          ...row,
+          credential_id: row.credential_id,
+        });
       });
     },
 

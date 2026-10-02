@@ -44,6 +44,11 @@
 			"id": "46b1e3d89ca646f99448d4aed9c01375"
 		}
 	],
+	"vars": {
+		"SUPABASE_URL": "https://ltnssjhpmlopbhliltys.supabase.co",
+		// Public publishable key (already shipped to browsers); sent to Supabase Auth to validate user tokens.
+		"SUPABASE_ANON_KEY": "sb_publishable_8E2_SJ7PXvSwLfC4-2hVbQ_LFXlLyad"
+	},
 	"routes": [
 		{
 			"pattern": "mcp.visamundi.io",
