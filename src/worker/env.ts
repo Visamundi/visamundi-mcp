@@ -21,6 +21,10 @@ export interface AnalyticsEngineBinding {
 export interface WorkerEnv {
   CONNECT_API_MCP_KEY?: string;
   VISAMUNDI_TOKEN?: string;
+  /** Supabase project URL; enables Supabase JWT auth on the partner route. */
+  SUPABASE_URL?: string;
+  /** Public publishable key (sb_publishable_...), used as the apikey header for Supabase Auth. */
+  SUPABASE_ANON_KEY?: string;
   MCP_ALLOWED_HOSTS?: string;
   ALLOW_ANONYMOUS_PUBLIC?: string;
   PUBLIC_MCP_REQUIRE_API_KEY?: string;

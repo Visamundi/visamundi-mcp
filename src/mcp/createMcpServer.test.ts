@@ -31,6 +31,7 @@ function getRegisteredPromptNames(server: unknown): string[] {
 function createDatabaseStub(): DatabaseApi {
   return {
     resolveCredentialByApiKey: vi.fn(),
+    resolveCredentialByUserId: vi.fn(),
     getConnectToken: vi.fn(),
     getCompany: vi.fn(),
     listTravelGroups: vi.fn(),

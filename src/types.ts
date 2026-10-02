@@ -18,6 +18,31 @@ export const ALL_TOOL_NAMES = [
 
 export type ToolName = (typeof ALL_TOOL_NAMES)[number];
 
+/** Tools that read company-scoped data and therefore need a company context. */
+export const COMPANY_TOOL_NAMES = [
+  "get_company",
+  "list_travel_groups",
+  "get_travel_group",
+  "list_referred_applications",
+  "get_referred_application",
+  "list_invoices",
+  "get_delivery_window",
+  "get_affiliate_stats",
+] as const satisfies readonly ToolName[];
+
+/**
+ * Every partner gets every tool: per-key tool selection no longer exists.
+ * Accounts without a company only get the tools that need no company context.
+ */
+export function grantedPartnerTools(companyId: string | null | undefined): ToolName[] {
+  if (companyId) {
+    return [...ALL_TOOL_NAMES];
+  }
+
+  const companyTools = new Set<ToolName>(COMPANY_TOOL_NAMES);
+  return ALL_TOOL_NAMES.filter((tool) => !companyTools.has(tool));
+}
+
 export interface CredentialContext {
   credentialId: string;
   companyId: string;
@@ -33,6 +58,11 @@ export interface ResolvedCredentialRow {
   allowed_tools: string[];
   connect_partner_name: string | null;
   connect_configured: boolean;
+}
+
+export interface UserResolvedCredentialRow
+  extends Omit<ResolvedCredentialRow, "credential_id"> {
+  credential_id: string | null;
 }
 
 export interface TravelGroupSummaryRow {
