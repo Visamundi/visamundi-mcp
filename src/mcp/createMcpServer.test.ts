@@ -87,4 +87,96 @@ describe("MCP server factories", () => {
     ]);
     expect(getRegisteredPromptNames(server)).toEqual(["review-travel-group"]);
   });
+
+  it("labels partner records with the visa name and destination from Connect", async () => {
+    const fetchMock = vi.fn(async (_url: string | URL | Request) =>
+      Response.json({
+        data: {
+          visa: {
+            id: 42617,
+            name: "ETA Royaume-Uni",
+            destination: { name: { common: "Royaume-Uni" } },
+          },
+        },
+      })
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const db = createDatabaseStub();
+    vi.mocked(db.listTravelGroups).mockResolvedValue([
+      { travel_group_id: "group-1", document_id: "42617", destination_iso: "GB" },
+    ] as never);
+    const server = createPartnerMcpServer({
+      authInfo: {
+        token: "partner-token",
+        clientId: "cred-1",
+        scopes: ["list_travel_groups"],
+        expiresAt: 4_102_444_800,
+        extra: { credentialId: "cred-1", companyId: "company-1" },
+      },
+      db,
+      fallbackConnectToken: "fallback-token",
+    });
+    const tools = (
+      server as unknown as {
+        _registeredTools: Record<string, { handler: (...args: unknown[]) => Promise<unknown> }>;
+      }
+    )._registeredTools;
+
+    const result = (await tools.list_travel_groups.handler({ language: "fr" }, {})) as {
+      structuredContent: { items: unknown[] };
+    };
+
+    expect(String(fetchMock.mock.calls[0]?.[0])).toBe(
+      "https://connect.visamundi.io/v3/visa/42617?language=fr"
+    );
+    expect(result.structuredContent.items[0]).toMatchObject({
+      visa_name: "ETA Royaume-Uni",
+      destination_name: "Royaume-Uni",
+    });
+    vi.unstubAllGlobals();
+  });
+
+  it("reports each partner tool call through onToolCall", async () => {
+    const db = createDatabaseStub();
+    vi.mocked(db.getCompany).mockResolvedValue({ name: "Acme" });
+    vi.mocked(db.listInvoices).mockRejectedValue(new Error("db down"));
+    const onToolCall = vi.fn();
+    const server = createPartnerMcpServer({
+      authInfo: {
+        token: "partner-token",
+        clientId: "cred-1",
+        scopes: ["get_company", "list_invoices"],
+        expiresAt: 4_102_444_800,
+        extra: { credentialId: "cred-1", companyId: "company-1" },
+      },
+      db,
+      onToolCall,
+    });
+    const tools = (
+      server as unknown as {
+        _registeredTools: Record<string, { handler: (...args: unknown[]) => Promise<unknown> }>;
+      }
+    )._registeredTools;
+
+    await tools.get_company.handler({}, {});
+    await tools.list_invoices.handler({}, {});
+
+    expect(onToolCall).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        toolName: "get_company",
+        credentialId: "cred-1",
+        success: true,
+        resultChars: JSON.stringify({ name: "Acme" }, null, 2).length,
+      })
+    );
+    expect(onToolCall).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        toolName: "list_invoices",
+        success: false,
+        errorMessage: "Error: db down",
+      })
+    );
+  });
 });

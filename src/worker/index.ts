@@ -168,6 +168,12 @@ function createPartnerHandler(env: WorkerEnv) {
         authInfo: ctx.authInfo,
         db,
         fallbackConnectToken: getConnectTokenFromEnv(env),
+        cache: createCloudflareCache(),
+        onToolCall: (event) => {
+          console.log(
+            JSON.stringify({ event: "partner_tool_call", route: "/partners", ...event })
+          );
+        },
       });
     },
     {
