@@ -13,6 +13,7 @@ function createUnavailableDatabaseApi(): DatabaseApi {
 
   return {
     resolveCredentialByApiKey: unavailable,
+    resolveCredentialByUserId: unavailable,
     getConnectToken: unavailable,
     getCompany: unavailable,
     listTravelGroups: unavailable,
