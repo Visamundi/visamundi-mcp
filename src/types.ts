@@ -86,6 +86,12 @@ export interface TravelGroupSummaryRow {
   updated_at: string;
 }
 
+export interface TravelGroupListItem extends TravelGroupSummaryRow {
+  /** Back-office processing status shared by all travelers, "mixed" when they differ, null when unknown. */
+  processing_status: string | null;
+  traveler_status_counts: Record<string, number>;
+}
+
 export interface ReferredApplicationSummaryRow {
   record_type: "referred_application";
   referred_application_id: string;

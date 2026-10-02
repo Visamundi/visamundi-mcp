@@ -39,7 +39,7 @@ export function registerSupabaseTools(
     "list_travel_groups",
     {
       description:
-        "List B2B travel groups managed by the current partner account. Use before get_travel_group or get_delivery_window when you need a travel_group_id.",
+        "List B2B travel groups managed by the current partner account. Use before get_travel_group or get_delivery_window when you need a travel_group_id. `status` is the group form status only; use `processing_status` (shared back-office status of the travelers, or \"mixed\") and `traveler_status_counts` to know where the visas stand.",
       annotations: {
         readOnlyHint: true,
         openWorldHint: false,
