@@ -3,6 +3,7 @@ import type { McpServer } from "@modelcontextprotocol/server";
 import type { DatabaseApi } from "../db.js";
 import { toolError, toolResult } from "../toolResult.js";
 import type { CredentialContext, ToolName } from "../types.js";
+import { toPartnerStatuses } from "../partnerStatuses.js";
 import type { AddVisaLabels } from "../visaLabels.js";
 
 type ToolRegistrar = Pick<McpServer, "registerTool">;
@@ -13,6 +14,10 @@ const languageSchema = z
   .regex(/^[a-z]{2}(?:-[A-Z]{2})?$/)
   .optional()
   .describe("Optional ISO 639-1 language code for the visa and destination names.");
+
+function partnerResult(result: unknown) {
+  return toolResult(toPartnerStatuses(result));
+}
 
 export function registerSupabaseTools(
   server: ToolRegistrar,
@@ -35,7 +40,7 @@ export function registerSupabaseTools(
     },
     async () => {
       try {
-        return toolResult(await db.getCompany(context.credentialId));
+        return partnerResult(await db.getCompany(context.credentialId));
       } catch (error) {
         return toolError(error);
       }
@@ -48,7 +53,7 @@ export function registerSupabaseTools(
     "list_travel_groups",
     {
       description:
-        "List B2B travel groups managed by the current partner account. Each row already includes destination, dates, traveler count and processing status, which is enough to answer overview questions without calling get_travel_group for every group. `status` is the group form status only; use `processing_status` (shared back-office status of the travelers, or \"mixed\") and `traveler_status_counts` to know where the visas stand. Only call get_travel_group or get_delivery_window when the user asks about one specific group. Records include visa_name and destination_name: always refer to a visa by its name and destination, never by its numeric document_id or visa_id.",
+        "List B2B travel groups managed by the current partner account. Each row already includes destination, dates, traveler count and the group status, which is enough to answer overview and group status questions without calling get_travel_group. Status values are already partner-facing wording: relay their meaning in the user's language. Only call get_travel_group when the user asks about the travelers of one specific group, and get_delivery_window when they ask about timing. Records include visa_name and destination_name: always refer to a visa by its name and destination, never by its numeric document_id or visa_id.",
       annotations: {
         readOnlyHint: true,
         openWorldHint: false,
@@ -61,7 +66,7 @@ export function registerSupabaseTools(
     },
     async ({ limit, offset, language }) => {
       try {
-        return toolResult(
+        return partnerResult(
           await addVisaLabels(
             await db.listTravelGroups(context.credentialId, limit ?? 25, offset ?? 0),
             language
@@ -79,7 +84,7 @@ export function registerSupabaseTools(
     "get_travel_group",
     {
       description:
-        "Fetch one managed travel group with traveler details, invoice metadata, and partner-visible operational fields. Requires a travel_group_id from list_travel_groups. Use only when the user needs details on one specific group, not to build an overview of several groups. Records include visa_name and destination_name: always refer to a visa by its name and destination, never by its numeric document_id or visa_id.",
+        "Fetch one managed travel group with traveler details (including each traveler's status), invoice metadata, and partner-visible operational fields. Requires a travel_group_id from list_travel_groups. Use only when the user needs details on one specific group, not to build an overview of several groups. Only report traveler statuses when the user asks about the travelers. Records include visa_name and destination_name: always refer to a visa by its name and destination, never by its numeric document_id or visa_id.",
       annotations: {
         readOnlyHint: true,
         openWorldHint: false,
@@ -99,7 +104,7 @@ export function registerSupabaseTools(
           language
         );
 
-        return toolResult(
+        return partnerResult(
           travelGroup ?? {
             record_type: "travel_group",
             status: "not_found",
@@ -130,7 +135,7 @@ export function registerSupabaseTools(
     },
     async ({ limit, offset, language }) => {
       try {
-        return toolResult(
+        return partnerResult(
           await addVisaLabels(
             await db.listReferredApplications(
               context.credentialId,
@@ -174,7 +179,7 @@ export function registerSupabaseTools(
           language
         );
 
-        return toolResult(
+        return partnerResult(
           application ?? {
             record_type: "referred_application",
             status: "not_found",
@@ -204,7 +209,7 @@ export function registerSupabaseTools(
     },
     async ({ limit, offset }) => {
       try {
-        return toolResult(
+        return partnerResult(
           await db.listInvoices(context.credentialId, limit ?? 25, offset ?? 0)
         );
       } catch (error) {
@@ -235,7 +240,7 @@ export function registerSupabaseTools(
     },
     async ({ country_code, visa_id }) => {
       try {
-        return toolResult(await db.getProcessingLoad(country_code, visa_id));
+        return partnerResult(await db.getProcessingLoad(country_code, visa_id));
       } catch (error) {
         return toolError(error);
       }
@@ -269,7 +274,7 @@ export function registerSupabaseTools(
           await db.getDeliveryWindow(context.credentialId, record_id),
           language
         );
-        return toolResult(result ?? { status: "not_found" });
+        return partnerResult(result ?? { status: "not_found" });
       } catch (error) {
         return toolError(error);
       }
@@ -294,7 +299,7 @@ export function registerSupabaseTools(
     },
     async ({ from, to }) => {
       try {
-        return toolResult(await db.getAffiliateStats(context.credentialId, from, to));
+        return partnerResult(await db.getAffiliateStats(context.credentialId, from, to));
       } catch (error) {
         return toolError(error);
       }

@@ -63,6 +63,13 @@ Naming visas:
 - Pass the user's language to partner tools so visa and destination names come back in that language.
 Never guess travel_group_id, referred_application_id, or record_id values.
 
+Answering the user:
+- Never mention database tables, columns, field names, JSON keys, tool names, or internal codes in your answers, not even in parentheses. Describe the information in plain words instead (say "the traveler status", never "backoffice_status" or "(status)").
+- Status values in tool results are already partner-facing wording. Relay their meaning in the user's language; never show a raw status code. A traveler whose payment has been received is "currently being processed by our team", not "paid".
+- When asked about a group's status, give the group status only. Mention traveler statuses only when the user asks about the travelers.
+- Keep answers short: only what the user asked, no lengthy explanations.
+- End every answer with a short question asking whether the user needs more information.
+
 Tool availability:
 - tools/list is authoritative for this connection.
 - If a tool appears in Visamundi docs but not in tools/list, it is not enabled for this credential. This commonly means it was disabled on your Visamundi partner MCP access page or was never granted.
@@ -216,7 +223,11 @@ When a visa or travel authorisation is required, invite the traveller to apply t
 export const PARTNER_WORKFLOWS = `# Example partner workflows
 
 ## Overview of managed groups
-1. list_travel_groups (rows already carry processing_status and traveler_status_counts)
+1. list_travel_groups (rows already carry the group status)
+
+## Status of the travelers in one group
+1. list_travel_groups
+2. get_travel_group(travel_group_id)
 
 ## Review one managed group
 1. list_travel_groups
