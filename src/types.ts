@@ -110,6 +110,8 @@ export interface InvoiceSummaryRow {
   record_id: string;
   record_type: "travel_group" | "referred_application" | "unknown";
   invoice_number: string | null;
+  /** Link to the invoice as stored by Visamundi; null when none is available. */
+  invoice_url: string | null;
   file_name: string | null;
   file_size: number | null;
   mime_type: string | null;
