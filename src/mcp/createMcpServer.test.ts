@@ -179,4 +179,34 @@ describe("MCP server factories", () => {
       })
     );
   });
+
+  it("asks for a search instead of looking a group up by name", async () => {
+    const db = createDatabaseStub();
+    const server = createPartnerMcpServer({
+      authInfo: {
+        token: "partner-token",
+        clientId: "cred-1",
+        scopes: ["list_travel_groups", "get_travel_group"],
+        expiresAt: 4_102_444_800,
+        extra: { credentialId: "cred-1", companyId: "company-1" },
+      },
+      db,
+    });
+    const tools = (
+      server as unknown as {
+        _registeredTools: Record<string, { handler: (...args: unknown[]) => Promise<unknown> }>;
+      }
+    )._registeredTools;
+
+    const result = (await tools.get_travel_group.handler(
+      { travel_group_id: "TEST_CA-001" },
+      {}
+    )) as { isError: boolean; content: Array<{ text: string }> };
+    await tools.list_travel_groups.handler({ search: "TEST_CA-001" }, {});
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toContain("list_travel_groups with search");
+    expect(db.getTravelGroup).not.toHaveBeenCalled();
+    expect(db.listTravelGroups).toHaveBeenCalledWith("cred-1", 25, 0, "TEST_CA-001");
+  });
 });

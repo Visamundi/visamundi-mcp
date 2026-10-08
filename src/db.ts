@@ -21,7 +21,8 @@ export interface DatabaseApi {
   listTravelGroups(
     credentialId: string,
     limit?: number,
-    offset?: number
+    offset?: number,
+    search?: string
   ): Promise<TravelGroupSummaryRow[]>;
   getTravelGroup(
     credentialId: string,
@@ -103,6 +104,18 @@ async function callValue<T>(
   );
 
   return result.rows[0]?.value as T;
+}
+
+const SEARCH_SCAN_LIMIT = 1000;
+
+export function matchesTravelGroupSearch(
+  row: Pick<TravelGroupSummaryRow, "group_name" | "internal_code" | "reference">,
+  search: string
+): boolean {
+  const needle = search.trim().toLowerCase();
+  return [row.group_name, row.internal_code, row.reference].some(
+    (value) => typeof value === "string" && value.toLowerCase().includes(needle)
+  );
 }
 
 export function hashApiKey(apiKey: string): string {
@@ -203,15 +216,31 @@ export function createDatabaseApi(connectionString: string): DatabaseApi {
     async listTravelGroups(
       credentialId: string,
       limit = 25,
-      offset = 0
+      offset = 0,
+      search?: string
     ): Promise<TravelGroupSummaryRow[]> {
-      return withDbClient(connectionString, (db) =>
+      const term = search?.trim();
+      if (!term) {
+        return withDbClient(connectionString, (db) =>
+          callRows<TravelGroupSummaryRow>(db, "mcp_list_travel_groups", [
+            credentialId,
+            limit,
+            offset,
+          ])
+        );
+      }
+
+      // Search runs over every group of the partner, then paginates the matches.
+      const rows = await withDbClient(connectionString, (db) =>
         callRows<TravelGroupSummaryRow>(db, "mcp_list_travel_groups", [
           credentialId,
-          limit,
-          offset,
+          SEARCH_SCAN_LIMIT,
+          0,
         ])
       );
+      return rows
+        .filter((row) => matchesTravelGroupSearch(row, term))
+        .slice(offset, offset + limit);
     },
 
     async getTravelGroup(

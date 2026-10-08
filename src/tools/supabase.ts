@@ -15,6 +15,9 @@ const languageSchema = z
   .optional()
   .describe("Optional ISO 639-1 language code for the visa and destination names.");
 
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 function partnerResult(result: unknown) {
   return toolResult(toPartnerStatuses(result));
 }
@@ -53,22 +56,34 @@ export function registerSupabaseTools(
     "list_travel_groups",
     {
       description:
-        "List B2B travel groups managed by the current partner account. Each row already includes destination, dates, traveler count and the group status, which is enough to answer overview and group status questions without calling get_travel_group. Status values are already partner-facing wording: relay their meaning in the user's language. Only call get_travel_group when the user asks about the travelers of one specific group, and get_delivery_window when they ask about timing. Records include visa_name and destination_name: always refer to a visa by its name and destination, never by its numeric document_id or visa_id.",
+        "List B2B travel groups managed by the current partner account. Each row already includes destination, dates, traveler count and the group status, which is enough to answer overview and group status questions without calling get_travel_group. When the user names a group (name, internal code or reference), pass it as search instead of paging through every group. Status values are already partner-facing wording: relay their meaning in the user's language. Only call get_travel_group when the user asks about the travelers of one specific group, and get_delivery_window when they ask about timing. Records include visa_name and destination_name: always refer to a visa by its name and destination, never by its numeric document_id or visa_id.",
       annotations: {
         readOnlyHint: true,
         openWorldHint: false,
       },
       inputSchema: z.object({
+        search: z
+          .string()
+          .trim()
+          .min(1)
+          .max(100)
+          .optional()
+          .describe("Optional group name, internal code or reference to look for (case-insensitive, partial match)."),
         limit: z.number().int().min(1).max(100).optional(),
         offset: z.number().int().min(0).optional(),
         language: languageSchema,
       }),
     },
-    async ({ limit, offset, language }) => {
+    async ({ search, limit, offset, language }) => {
       try {
         return partnerResult(
           await addVisaLabels(
-            await db.listTravelGroups(context.credentialId, limit ?? 25, offset ?? 0),
+            await db.listTravelGroups(
+              context.credentialId,
+              limit ?? 25,
+              offset ?? 0,
+              search
+            ),
             language
           )
         );
@@ -84,7 +99,7 @@ export function registerSupabaseTools(
     "get_travel_group",
     {
       description:
-        "Fetch one managed travel group with traveler details (including each traveler's status), invoice metadata, and partner-visible operational fields. Requires a travel_group_id from list_travel_groups. Use only when the user needs details on one specific group, not to build an overview of several groups. Only report traveler statuses when the user asks about the travelers. Records include visa_name and destination_name: always refer to a visa by its name and destination, never by its numeric document_id or visa_id.",
+        "Fetch one managed travel group with traveler details (including each traveler's status), invoices (with their invoice_url link), and partner-visible operational fields. Requires a travel_group_id from list_travel_groups. Use only when the user needs details on one specific group, not to build an overview of several groups. Only report traveler statuses when the user asks about the travelers. Records include visa_name and destination_name: always refer to a visa by its name and destination, never by its numeric document_id or visa_id.",
       annotations: {
         readOnlyHint: true,
         openWorldHint: false,
@@ -92,12 +107,19 @@ export function registerSupabaseTools(
       inputSchema: z.object({
         travel_group_id: z
           .string()
-          .uuid()
-          .describe("Travel group UUID returned by list_travel_groups."),
+          .describe("Travel group UUID returned by list_travel_groups, never a group name."),
         language: languageSchema,
       }),
     },
     async ({ travel_group_id, language }) => {
+      if (!UUID_PATTERN.test(travel_group_id)) {
+        return toolError(
+          new Error(
+            "travel_group_id must be the UUID returned by list_travel_groups. To find a group by name, internal code or reference, call list_travel_groups with search."
+          )
+        );
+      }
+
       try {
         const travelGroup = await addVisaLabels(
           await db.getTravelGroup(context.credentialId, travel_group_id),
@@ -157,7 +179,7 @@ export function registerSupabaseTools(
     "get_referred_application",
     {
       description:
-        "Fetch one referred application with traveler details and invoice metadata. Requires a referred_application_id from list_referred_applications. Use only when the user needs details on one specific application. Records include visa_name and destination_name: always refer to a visa by its name and destination, never by its numeric document_id or visa_id.",
+        "Fetch one referred application with traveler details and invoices (with their invoice_url link). Requires a referred_application_id from list_referred_applications. Use only when the user needs details on one specific application. Records include visa_name and destination_name: always refer to a visa by its name and destination, never by its numeric document_id or visa_id.",
       annotations: {
         readOnlyHint: true,
         openWorldHint: false,
@@ -197,7 +219,7 @@ export function registerSupabaseTools(
     "list_invoices",
     {
       description:
-        "List invoice metadata for travel groups and referred applications visible to the current partner account. Each row includes record_type to identify the source record.",
+        "List invoices for travel groups and referred applications visible to the current partner account. Each row includes record_type to identify the source record and invoice_url, the only valid link to the invoice (null when no link is available).",
       annotations: {
         readOnlyHint: true,
         openWorldHint: false,
