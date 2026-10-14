@@ -231,4 +231,32 @@ describe("Cloudflare worker routing", () => {
     expect(body).not.toContain("statusCode");
     vi.unstubAllGlobals();
   });
+  it("stops anonymous lookups past the daily quota with a tool error", async () => {
+    const response = await createWorkerHandler().fetch(
+      new Request("https://example.com/", {
+        method: "POST",
+        headers: {
+          accept: "application/json, text/event-stream",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 3,
+          method: "tools/call",
+          params: { name: "get_visa", arguments: { id: 1 } },
+        }),
+      }),
+      createEnv({
+        PUBLIC_DAILY_QUOTA: {
+          idFromName: (name: string) => name,
+          get: () => ({ fetch: async () => Response.json({ allowed: false, count: 200 }) }),
+        },
+      }),
+      ctx
+    );
+
+    const body = await response.json();
+    expect(body).toMatchObject({ id: 3, result: { isError: true } });
+    expect(body.result.content[0].text).toContain("Daily limit reached");
+  });
 });

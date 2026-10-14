@@ -122,6 +122,10 @@ application tools are enabled, writes draft applications anonymously. The Worker
 - Cloudflare rate-limit bindings for the whole public route, a tighter
   `get_visa` budget and `APPLICATION_WRITE_RATE_LIMITER` for `save_application`
   / `get_payment_link` (enabled in `wrangler.jsonc`)
+- A daily cap of 200 reference lookups per anonymous client (Paris day),
+  counted by the `PublicDailyQuota` Durable Object; application tools and
+  keyed clients are not counted. Past the cap, calls get a tool error that
+  points to the form and to API keys.
 - Compact, traveller-oriented public results (`src/publicCompact.ts`): no
   envelope, nationality lists, entry points or long HTML texts. The full
   structured data stays behind the keyed REST API.

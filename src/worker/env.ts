@@ -1,3 +1,5 @@
+import type { DailyQuotaNamespace } from "./dailyQuota.js";
+
 export interface HyperdriveBinding {
   connectionString: string;
 }
@@ -31,6 +33,8 @@ export interface WorkerEnv {
   PUBLIC_MCP_KEYS?: PublicKeyValueStore;
   PUBLIC_ROUTE_RATE_LIMITER?: RateLimitBinding;
   PUBLIC_GET_VISA_RATE_LIMITER?: RateLimitBinding;
+  /** Durable Object counting anonymous reference lookups per day (PublicDailyQuota). */
+  PUBLIC_DAILY_QUOTA?: DailyQuotaNamespace;
   /** Per-actor limit on save_application / get_payment_link (anonymous writes). */
   APPLICATION_WRITE_RATE_LIMITER?: RateLimitBinding;
   /** form-visamundi-next base URL serving /api/agent/* (e.g. https://form.visamundi.app). */

@@ -22,6 +22,9 @@ import {
   notePublicUpstreamFailure,
 } from "./publicCircuitBreaker.js";
 import { verifyPartnerBearer } from "./verifyPartnerBearer.js";
+import { enforcePublicDailyQuota } from "./dailyQuota.js";
+
+export { PublicDailyQuota } from "./dailyQuota.js";
 
 let hasWarnedAboutOpenPublicHostConfig = false;
 
@@ -216,6 +219,11 @@ export function createWorkerHandler() {
         );
         if (rateLimited) {
           return rateLimited;
+        }
+
+        const overQuota = await enforcePublicDailyQuota(env, actor, parsedRequest);
+        if (overQuota) {
+          return overQuota;
         }
 
         return createPublicHandler(env, request, ctx, actor).fetch(request, {

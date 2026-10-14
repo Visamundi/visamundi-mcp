@@ -26,6 +26,8 @@ const PUBLIC_ROUTE_TOOL_NAMES: readonly string[] = [
 const APPLICATION_WRITE_TOOLS: readonly string[] = ["save_application", "get_payment_link"];
 
 export interface ParsedMcpRequest {
+  /** JSON-RPC id, echoed when the Worker answers a call itself. */
+  id?: unknown;
   method?: string;
   toolName?: PublicRouteToolName;
   arguments: Record<string, unknown>;
@@ -122,6 +124,7 @@ export async function parsePublicMcpRequest(
 
   try {
     const body = (await request.clone().json()) as {
+      id?: unknown;
       method?: string;
       params?: {
         name?: string;
@@ -136,6 +139,7 @@ export async function parsePublicMcpRequest(
         : undefined;
 
     return {
+      id: body.id,
       method: body.method,
       toolName,
       arguments: body.params?.arguments ?? {},

@@ -35,6 +35,21 @@
 			}
 		}
 	],
+	// Daily cap on anonymous reference lookups (200 / day / actor, Paris day).
+	"durable_objects": {
+		"bindings": [
+			{
+				"name": "PUBLIC_DAILY_QUOTA",
+				"class_name": "PublicDailyQuota"
+			}
+		]
+	},
+	"migrations": [
+		{
+			"tag": "v1-public-daily-quota",
+			"new_sqlite_classes": ["PublicDailyQuota"]
+		}
+	],
 	// "kv_namespaces": [
 	// 	{
 	// 		"binding": "PUBLIC_MCP_KEYS",
