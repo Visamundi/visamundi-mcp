@@ -6,6 +6,7 @@ import { createPartnerMcpServer } from "../mcp/createPartnerMcpServer.js";
 import { createPublicMcpServer } from "../mcp/createPublicMcpServer.js";
 import {
   getConnectTokenFromEnv,
+  getFormAgentApiFromEnv,
   parseAllowedHosts,
   type WorkerEnv,
   type WorkerExecutionContext,
@@ -146,6 +147,10 @@ function createPublicHandler(
         connectToken: getConnectTokenFromEnv(env),
         cache: createCloudflareCache(),
         onPublicToolCall: logPublicToolCall(request, env, ctx, actor),
+        formAgentApi: getFormAgentApiFromEnv(
+          env,
+          request.headers.get("cf-connecting-ip")
+        ),
       }),
     {
       route: "/",

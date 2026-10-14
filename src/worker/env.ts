@@ -31,6 +31,12 @@ export interface WorkerEnv {
   PUBLIC_MCP_KEYS?: PublicKeyValueStore;
   PUBLIC_ROUTE_RATE_LIMITER?: RateLimitBinding;
   PUBLIC_GET_VISA_RATE_LIMITER?: RateLimitBinding;
+  /** Per-actor limit on save_application / get_payment_link (anonymous writes). */
+  APPLICATION_WRITE_RATE_LIMITER?: RateLimitBinding;
+  /** form-visamundi-next base URL serving /api/agent/* (e.g. https://form.visamundi.app). */
+  FORM_AGENT_API_URL?: string;
+  /** Shared service key, sent as X-Agent-Key (AGENT_API_KEY on the form side). */
+  FORM_AGENT_API_KEY?: string;
   MCP_ANALYTICS?: AnalyticsEngineBinding;
   HYPERDRIVE: HyperdriveBinding;
 }
@@ -77,4 +83,17 @@ export function parseBooleanEnv(
   }
 
   return defaultValue;
+}
+
+/** Application tools are exposed only when both the URL and the key are set. */
+export function getFormAgentApiFromEnv(
+  env: Pick<WorkerEnv, "FORM_AGENT_API_URL" | "FORM_AGENT_API_KEY">,
+  clientIp: string | null
+): { baseUrl: string; apiKey: string; clientIp: string | null } | null {
+  const baseUrl = env.FORM_AGENT_API_URL?.trim();
+  const apiKey = env.FORM_AGENT_API_KEY?.trim();
+  if (!baseUrl || !apiKey) {
+    return null;
+  }
+  return { baseUrl, apiKey, clientIp };
 }

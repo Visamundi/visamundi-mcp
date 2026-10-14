@@ -120,4 +120,69 @@ describe("Cloudflare worker routing", () => {
     expect(body).not.toContain("secret-value");
     expect(body).not.toContain("token=");
   });
+  it("relays save_application to the form API without redacting the resume token", async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(
+      Response.json({
+        applicationId: "app-1",
+        resumeToken: "tok-secret-1",
+        reference: "VM-1",
+        missing: [],
+        pricing: null,
+      })
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const response = await createWorkerHandler().fetch(
+      new Request("https://example.com/", {
+        method: "POST",
+        headers: {
+          accept: "application/json, text/event-stream",
+          "content-type": "application/json",
+          "cf-connecting-ip": "203.0.113.7",
+        },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "tools/call",
+          params: {
+            name: "save_application",
+            arguments: { visaId: "42629", locale: "fr", values: {} },
+          },
+        }),
+      }),
+      createEnv({
+        FORM_AGENT_API_URL: "https://form.test",
+        FORM_AGENT_API_KEY: "service-key",
+      }),
+      ctx
+    );
+
+    const body = await response.text();
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe("https://form.test/api/agent/applications");
+    expect(init.headers["X-Agent-Key"]).toBe("service-key");
+    expect(init.headers["X-Agent-Client-Ip"]).toBe("203.0.113.7");
+    expect(body).toContain("tok-secret-1");
+    expect(body).not.toContain("service-key");
+    vi.unstubAllGlobals();
+  });
+
+  it("does not expose the application tools when the form API is not configured", async () => {
+    const response = await createWorkerHandler().fetch(
+      new Request("https://example.com/", {
+        method: "POST",
+        headers: {
+          accept: "application/json, text/event-stream",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list" }),
+      }),
+      createEnv(),
+      ctx
+    );
+
+    const body = await response.text();
+    expect(body).toContain("get_visa");
+    expect(body).not.toContain("save_application");
+  });
 });

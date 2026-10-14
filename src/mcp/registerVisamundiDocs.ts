@@ -1,6 +1,8 @@
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/server";
 import {
+  APPLICATION_SERVER_INSTRUCTIONS,
+  SUBMIT_APPLICATION_WORKFLOW,
   buildPartnerServerInstructions,
   COUNTRY_CODES_GUIDE,
   PARTNER_SERVER_INSTRUCTIONS,
@@ -146,6 +148,51 @@ export function registerPublicVisamundiDocs(server: DocServer): void {
   );
 }
 
+/** Workflow docs for the agent application tools (only when they are exposed). */
+export function registerApplicationDocs(server: DocServer): void {
+  registerMarkdownResource(
+    server,
+    "submit-visa-application",
+    "visamundi://docs/submit-visa-application",
+    "Submit a visa application",
+    "How to prepare a Visamundi visa application for a traveller and hand them the payment link.",
+    SUBMIT_APPLICATION_WORKFLOW
+  );
+
+  server.registerPrompt(
+    "submit-visa-application",
+    {
+      title: "Submit a visa application",
+      description:
+        "Prepare a Visamundi visa application for a traveller and give them the payment link.",
+      argsSchema: z.object({
+        nationality: z.string().describe("Traveller nationality ISO code."),
+        destination: z.string().describe("Destination country ISO code."),
+        language: z.string().optional(),
+      }),
+    },
+    ({ nationality, destination, language }) => ({
+      messages: [
+        {
+          role: "user" as const,
+          content: {
+            type: "text" as const,
+            text: [
+              "Help me apply for a visa with Visamundi.",
+              `Nationality: ${nationality}`,
+              `Destination: ${destination}`,
+              language ? `Preferred language: ${language}` : null,
+              SUBMIT_APPLICATION_WORKFLOW,
+            ]
+              .filter(Boolean)
+              .join("\n"),
+          },
+        },
+      ],
+    })
+  );
+}
+
 export function registerPartnerVisamundiDocs(server: DocServer): void {
   registerMarkdownResource(
     server,
@@ -204,6 +251,7 @@ export function registerPartnerVisamundiDocs(server: DocServer): void {
 }
 
 export {
+  APPLICATION_SERVER_INSTRUCTIONS,
   buildPartnerServerInstructions,
   PUBLIC_SERVER_INSTRUCTIONS,
   PARTNER_SERVER_INSTRUCTIONS,
