@@ -14,8 +14,13 @@ CONNECT_API_MCP_KEY=
 # Optional host allowlist for custom domains
 # MCP_ALLOWED_HOSTS=mcp.example.com
 #
+# Agent application tools (form-visamundi-next /api/agent/*). Both required.
+# FORM_AGENT_API_URL=http://localhost:3000
+# FORM_AGENT_API_KEY=<same value as AGENT_API_KEY in form-visamundi-next .env.local>
+#
 # Optional deployment-only bindings:
 # - PUBLIC_ROUTE_RATE_LIMITER
 # - PUBLIC_GET_VISA_RATE_LIMITER
+# - APPLICATION_WRITE_RATE_LIMITER
 # - PUBLIC_MCP_KEYS
 # - MCP_ANALYTICS

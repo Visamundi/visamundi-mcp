@@ -12,6 +12,12 @@ Cloudflare Worker MCP server for Visamundi public visa data and partner-scoped t
   - `get_visa_requirements`
   - `get_vaccines`
   - `get_customs`
+- Public application tools (only when `FORM_AGENT_API_URL` and the `FORM_AGENT_API_KEY` secret are set):
+  - `get_application_form` — form schema, constraints and estimated price for one visa
+  - `save_application` — create / update a B2C application (returns `missing` until complete)
+  - `get_payment_link` — Visamundi payment link for the traveller (the agent never pays nor accepts terms)
+  - Business rules live in form-visamundi-next `/api/agent/*`; the Worker only relays calls with `X-Agent-Key`, `X-Agent-Client-Ip` (from `CF-Connecting-IP`) and `X-Resume-Token`. Workflow doc: `visamundi://docs/submit-visa-application` and prompt `submit-visa-application`.
+  - form-visamundi-next also relays these public tools to in-browser agents through a WebMCP bridge (CORS is open on `/`).
 - Partner tools (route `/partners`, bearer auth; only tools allowed for the credential are exposed):
   - `list_countries`
   - `get_company`
@@ -96,6 +102,8 @@ Optional:
 
 ```bash
 wrangler secret put VISAMUNDI_TOKEN
+# Enables the application tools; same value as AGENT_API_KEY on form-visamundi-next.
+wrangler secret put FORM_AGENT_API_KEY
 ```
 
 Then deploy:
@@ -106,13 +114,14 @@ npm run deploy
 
 ## Public route hardening
 
-The public MCP route at `/` is read-only, but it still spends your shared
-Connect API token. The Worker now supports the following abuse controls:
+The public MCP route at `/` spends your shared Connect API token and, when the
+application tools are enabled, writes draft applications anonymously. The Worker now supports the following abuse controls:
 
 - Optional public API keys on `/` via `Authorization: Bearer <key>` or
   `X-MCP-Key`
-- Optional Cloudflare rate-limit bindings for the whole public route and a
-  tighter `get_visa` budget
+- Cloudflare rate-limit bindings for the whole public route, a tighter
+  `get_visa` budget and `APPLICATION_WRITE_RATE_LIMITER` for `save_application`
+  / `get_payment_link` (enabled in `wrangler.jsonc`)
 - Response caching for public Connect-backed reads
 - Recursive redaction of token-like and internal fields in public responses
 - Structured audit logs for each public tool call
@@ -125,12 +134,15 @@ Recommended production posture:
 1. Set `ALLOW_ANONYMOUS_PUBLIC=false`
 2. Set `PUBLIC_MCP_REQUIRE_API_KEY=true`
 3. Bind `PUBLIC_MCP_KEYS` to a KV namespace of hashed public keys
-4. Enable `PUBLIC_ROUTE_RATE_LIMITER` and `PUBLIC_GET_VISA_RATE_LIMITER`
+4. Keep `PUBLIC_ROUTE_RATE_LIMITER`, `PUBLIC_GET_VISA_RATE_LIMITER` and
+   `APPLICATION_WRITE_RATE_LIMITER` enabled
 5. Set `MCP_ALLOWED_HOSTS` for the exact production hostname
 6. Bind `MCP_ANALYTICS` if you want queryable abuse metrics
 
-The repository keeps these bindings commented out in `wrangler.jsonc` so you
-can replace them with account-specific IDs before enabling them.
+The rate limiters are enabled in `wrangler.jsonc`; the KV and Analytics Engine
+bindings stay commented out until account-specific IDs are set. Requiring a
+public API key would hide the route from the browser WebMCP bridge (a key
+cannot stay secret in a browser).
 
 ### Public API keys
 
