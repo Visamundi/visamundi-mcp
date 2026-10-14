@@ -185,4 +185,50 @@ describe("Cloudflare worker routing", () => {
     expect(body).toContain("get_visa");
     expect(body).not.toContain("save_application");
   });
+  it("returns compact, traveller-oriented results on the public route", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValueOnce(
+        Response.json({
+          success: true,
+          statusCode: 200,
+          code: "ok",
+          data: {
+            visa: {
+              id: 42629,
+              name: "TDAC",
+              type: "arrival-card",
+              destination: { name: { common: "Thaïlande" }, cca2: "TH" },
+              allowed_nationalities: { AFG: "Afghanistan", FRA: "France" },
+              stay_duration: 90,
+            },
+          },
+        })
+      )
+    );
+
+    const response = await createWorkerHandler().fetch(
+      new Request("https://example.com/", {
+        method: "POST",
+        headers: {
+          accept: "application/json, text/event-stream",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "tools/call",
+          params: { name: "get_visa", arguments: { id: 42629 } },
+        }),
+      }),
+      createEnv(),
+      ctx
+    );
+
+    const body = await response.text();
+    expect(body).toContain("stay_duration_days");
+    expect(body).not.toContain("allowed_nationalities");
+    expect(body).not.toContain("statusCode");
+    vi.unstubAllGlobals();
+  });
 });

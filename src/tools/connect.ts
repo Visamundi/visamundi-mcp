@@ -13,6 +13,7 @@ import {
   sanitizePublicResponse,
   listVisas,
 } from "../api.js";
+import { compactPublicResponse } from "../publicCompact.js";
 import { toolError, toolResult } from "../toolResult.js";
 import type { CredentialContext, ToolName } from "../types.js";
 import type { McpServer } from "@modelcontextprotocol/server";
@@ -80,7 +81,9 @@ function formatPublicResult(
   toolName: PublicToolName,
   result: unknown
 ): ReturnType<typeof toolResult> {
-  return toolResult(sanitizePublicResponse(toolName, result));
+  return toolResult(
+    compactPublicResponse(toolName, sanitizePublicResponse(toolName, result))
+  );
 }
 
 async function runPublicTool(

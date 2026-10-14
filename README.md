@@ -122,6 +122,9 @@ application tools are enabled, writes draft applications anonymously. The Worker
 - Cloudflare rate-limit bindings for the whole public route, a tighter
   `get_visa` budget and `APPLICATION_WRITE_RATE_LIMITER` for `save_application`
   / `get_payment_link` (enabled in `wrangler.jsonc`)
+- Compact, traveller-oriented public results (`src/publicCompact.ts`): no
+  envelope, nationality lists, entry points or long HTML texts. The full
+  structured data stays behind the keyed REST API.
 - Response caching for public Connect-backed reads
 - Recursive redaction of token-like and internal fields in public responses
 - Structured audit logs for each public tool call
