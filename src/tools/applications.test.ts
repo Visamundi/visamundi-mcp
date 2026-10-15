@@ -138,6 +138,32 @@ describe("application tools", () => {
     expect(res.structuredContent).toMatchObject({ complete: true, resumeToken: "tok-1" });
   });
 
+  it("save_application forwards the partner affiliateCode on create and update", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(json(200, { applicationId: "app-1", missing: [] }));
+    const { tools } = setup(fetchImpl);
+    const save = tools.get("save_application")!;
+
+    await save.handler({ visaId: "42629", locale: "fr", affiliateCode: "ag404" });
+    expect(JSON.parse(fetchImpl.mock.calls[0][1].body)).toEqual({
+      visaId: "42629",
+      locale: "fr",
+      affiliateCode: "ag404",
+    });
+
+    await save.handler({
+      visaId: "42629",
+      locale: "fr",
+      applicationId: "app-1",
+      resumeToken: "tok-1",
+      affiliateCode: "ag404",
+    });
+    expect(JSON.parse(fetchImpl.mock.calls[1][1].body)).toEqual({ affiliateCode: "ag404" });
+
+    const schema = (save.config as { inputSchema?: unknown }).inputSchema as { shape: Record<string, { safeParse(v: unknown): { success: boolean } }> };
+    expect(schema.shape.affiliateCode.safeParse("AG404").success).toBe(true);
+    expect(schema.shape.affiliateCode.safeParse("promo10").success).toBe(false);
+  });
+
   it("save_application refuses an update without resumeToken", async () => {
     const fetchImpl = vi.fn();
     const { tools } = setup(fetchImpl);

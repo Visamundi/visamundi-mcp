@@ -76,6 +76,14 @@ const travelersSchema = z
     "One object per traveller (identity and passport), keyed as in the `travelers` schema of get_application_form. On update, travellers are merged by position."
   );
 
+const affiliateCodeSchema = z
+  .string()
+  .trim()
+  .regex(/^(ae|ag)?\d{1,9}$/i)
+  .describe(
+    "Visamundi partner code (e.g. ag404), only if the traveller came through a partner link (`?partner=` / `?agence=`). Never guess one. Ignored if the application already has one."
+  );
+
 interface Gap {
   path?: string;
   reason?: string;
@@ -270,9 +278,10 @@ export function registerApplicationTools(
         resumeToken: resumeTokenSchema.optional(),
         values: valuesSchema.optional(),
         travelers: travelersSchema.optional(),
+        affiliateCode: affiliateCodeSchema.optional(),
       }),
     },
-    async ({ visaId, locale, applicationId, resumeToken, values, travelers }) => {
+    async ({ visaId, locale, applicationId, resumeToken, values, travelers, affiliateCode }) => {
       const logged = { visaId, locale, applicationId };
       if (applicationId && !resumeToken) {
         return run("save_application", logged, options, async () => {
@@ -287,6 +296,7 @@ export function registerApplicationTools(
         const patch = {
           ...(values ? { values } : {}),
           ...(travelers ? { travelers } : {}),
+          ...(affiliateCode ? { affiliateCode } : {}),
         };
         const body = applicationId
           ? await callFormApi(
