@@ -74,7 +74,9 @@
 		"SUPABASE_ANON_KEY": "sb_publishable_8E2_SJ7PXvSwLfC4-2hVbQ_LFXlLyad",
 		// Agent application tools: enabled only once the FORM_AGENT_API_KEY secret is set
 		// (wrangler secret put FORM_AGENT_API_KEY — same value as AGENT_API_KEY on the form).
-		"FORM_AGENT_API_URL": "https://form.visamundi.app"
+		"FORM_AGENT_API_URL": "https://form.visamundi.app",
+		// Pages allowed to call the public route from a browser (WebMCP bridge on the form).
+		"MCP_ALLOWED_ORIGINS": "form.visamundi.app"
 	},
 	"routes": [
 		{

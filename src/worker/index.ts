@@ -158,6 +158,9 @@ function createPublicHandler(
     {
       route: "/",
       allowedHostnames,
+      // Browser pages relaying the public tools (WebMCP bridge on the form);
+      // unset = the SDK default, localhost only.
+      allowedOriginHostnames: parseAllowedHosts(env.MCP_ALLOWED_ORIGINS),
     }
   );
 }

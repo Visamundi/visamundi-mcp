@@ -14,6 +14,9 @@ CONNECT_API_MCP_KEY=
 # Optional host allowlist for custom domains
 # MCP_ALLOWED_HOSTS=mcp.example.com
 #
+# Optional Origin allowlist for browser callers of the public route (WebMCP bridge)
+# MCP_ALLOWED_ORIGINS=form.visamundi.app
+#
 # Agent application tools (form-visamundi-next /api/agent/*). Both required.
 # FORM_AGENT_API_URL=http://localhost:3000
 # FORM_AGENT_API_KEY=<same value as AGENT_API_KEY in form-visamundi-next .env.local>

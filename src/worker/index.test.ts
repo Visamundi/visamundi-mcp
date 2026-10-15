@@ -61,6 +61,31 @@ describe("Cloudflare worker routing", () => {
     expect(response.status).not.toBe(404);
   });
 
+  it("accepts browser calls on the public route from MCP_ALLOWED_ORIGINS only", async () => {
+    const initialize = (path: string, origin: string) =>
+      createWorkerHandler().fetch(
+        new Request(`https://example.com${path}`, {
+          method: "POST",
+          headers: {
+            accept: "application/json, text/event-stream",
+            "content-type": "application/json",
+            origin,
+          },
+          body: JSON.stringify({
+            jsonrpc: "2.0",
+            id: 1,
+            method: "initialize",
+            params: { protocolVersion: "2025-06-18", capabilities: {}, clientInfo: { name: "t", version: "1" } },
+          }),
+        }),
+        createEnv({ MCP_ALLOWED_ORIGINS: "form.visamundi.app" }),
+        ctx
+      );
+
+    expect((await initialize("/", "https://form.visamundi.app")).status).toBe(200);
+    expect((await initialize("/", "https://evil.example")).status).toBe(403);
+  });
+
   it("returns 429 when the public route rate limit is exceeded", async () => {
     const response = await createWorkerHandler().fetch(
       new Request("https://example.com/", {

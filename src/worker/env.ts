@@ -28,6 +28,8 @@ export interface WorkerEnv {
   /** Public publishable key (sb_publishable_...), used as the apikey header for Supabase Auth. */
   SUPABASE_ANON_KEY?: string;
   MCP_ALLOWED_HOSTS?: string;
+  /** Comma-separated Origin hostnames allowed to call the public route from a browser. */
+  MCP_ALLOWED_ORIGINS?: string;
   ALLOW_ANONYMOUS_PUBLIC?: string;
   PUBLIC_MCP_REQUIRE_API_KEY?: string;
   PUBLIC_MCP_KEYS?: PublicKeyValueStore;
