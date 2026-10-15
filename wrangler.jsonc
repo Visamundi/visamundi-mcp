@@ -6,26 +6,50 @@
 	"compatibility_flags": [
 		"nodejs_compat"
 	],
-	// Optional abuse controls for the public MCP route.
-	// Replace namespace IDs / dataset name before enabling in production.
-	// "ratelimits": [
-	// 	{
-	// 		"name": "PUBLIC_ROUTE_RATE_LIMITER",
-	// 		"namespace_id": "1001",
-	// 		"simple": {
-	// 			"limit": 60,
-	// 			"period": 60
-	// 		}
-	// 	},
-	// 	{
-	// 		"name": "PUBLIC_GET_VISA_RATE_LIMITER",
-	// 		"namespace_id": "1002",
-	// 		"simple": {
-	// 			"limit": 10,
-	// 			"period": 60
-	// 		}
-	// 	}
-	// ],
+	// Abuse controls for the public MCP route (keyed by actor: anonymous IP or public key).
+	// Cloudflare only allows a 10 s or 60 s period.
+	"ratelimits": [
+		{
+			"name": "PUBLIC_ROUTE_RATE_LIMITER",
+			"namespace_id": "1001",
+			"simple": {
+				"limit": 60,
+				"period": 60
+			}
+		},
+		{
+			"name": "PUBLIC_GET_VISA_RATE_LIMITER",
+			"namespace_id": "1002",
+			"simple": {
+				"limit": 10,
+				"period": 60
+			}
+		},
+		{
+			// save_application + get_payment_link (anonymous writes into form-visamundi-next).
+			"name": "APPLICATION_WRITE_RATE_LIMITER",
+			"namespace_id": "1003",
+			"simple": {
+				"limit": 10,
+				"period": 60
+			}
+		}
+	],
+	// Daily cap on anonymous reference lookups (200 / day / actor, Paris day).
+	"durable_objects": {
+		"bindings": [
+			{
+				"name": "PUBLIC_DAILY_QUOTA",
+				"class_name": "PublicDailyQuota"
+			}
+		]
+	},
+	"migrations": [
+		{
+			"tag": "v1-public-daily-quota",
+			"new_sqlite_classes": ["PublicDailyQuota"]
+		}
+	],
 	// "kv_namespaces": [
 	// 	{
 	// 		"binding": "PUBLIC_MCP_KEYS",
@@ -47,7 +71,10 @@
 	"vars": {
 		"SUPABASE_URL": "https://ltnssjhpmlopbhliltys.supabase.co",
 		// Public publishable key (already shipped to browsers); sent to Supabase Auth to validate user tokens.
-		"SUPABASE_ANON_KEY": "sb_publishable_8E2_SJ7PXvSwLfC4-2hVbQ_LFXlLyad"
+		"SUPABASE_ANON_KEY": "sb_publishable_8E2_SJ7PXvSwLfC4-2hVbQ_LFXlLyad",
+		// Agent application tools: enabled only once the FORM_AGENT_API_KEY secret is set
+		// (wrangler secret put FORM_AGENT_API_KEY — same value as AGENT_API_KEY on the form).
+		"FORM_AGENT_API_URL": "https://form.visamundi.app"
 	},
 	"routes": [
 		{

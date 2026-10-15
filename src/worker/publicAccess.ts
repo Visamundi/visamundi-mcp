@@ -1,5 +1,9 @@
 import { hashApiKey } from "../db.js";
 import type { PublicToolName } from "../api.js";
+import {
+  APPLICATION_TOOL_NAMES,
+  type ApplicationToolName,
+} from "../tools/applications.js";
 import { parseBooleanEnv, type WorkerEnv } from "./env.js";
 
 export interface PublicActor {
@@ -8,9 +12,24 @@ export interface PublicActor {
   apiKeyId?: string;
 }
 
+export type PublicRouteToolName = PublicToolName | ApplicationToolName;
+
+const PUBLIC_ROUTE_TOOL_NAMES: readonly string[] = [
+  "list_visas",
+  "get_visa",
+  "get_visa_requirements",
+  "get_vaccines",
+  "get_customs",
+  ...APPLICATION_TOOL_NAMES,
+];
+
+const APPLICATION_WRITE_TOOLS: readonly string[] = ["save_application", "get_payment_link"];
+
 export interface ParsedMcpRequest {
+  /** JSON-RPC id, echoed when the Worker answers a call itself. */
+  id?: unknown;
   method?: string;
-  toolName?: PublicToolName;
+  toolName?: PublicRouteToolName;
   arguments: Record<string, unknown>;
 }
 
@@ -19,6 +38,8 @@ function jsonError(status: number, code: string, message: string): Response {
     status,
     headers: {
       "content-type": "application/json",
+      // The WebMCP bridge calls this route from the browser: errors must stay readable.
+      "access-control-allow-origin": "*",
     },
   });
 }
@@ -103,6 +124,7 @@ export async function parsePublicMcpRequest(
 
   try {
     const body = (await request.clone().json()) as {
+      id?: unknown;
       method?: string;
       params?: {
         name?: string;
@@ -112,17 +134,12 @@ export async function parsePublicMcpRequest(
     const toolName =
       body.method === "tools/call" &&
       typeof body.params?.name === "string" &&
-      [
-        "list_visas",
-        "get_visa",
-        "get_visa_requirements",
-        "get_vaccines",
-        "get_customs",
-      ].includes(body.params.name)
-        ? (body.params.name as PublicToolName)
+      PUBLIC_ROUTE_TOOL_NAMES.includes(body.params.name)
+        ? (body.params.name as PublicRouteToolName)
         : undefined;
 
     return {
+      id: body.id,
       method: body.method,
       toolName,
       arguments: body.params?.arguments ?? {},
@@ -141,7 +158,7 @@ function rateLimitResponse(message: string): Response {
 export async function enforcePublicRateLimits(
   env: WorkerEnv,
   actor: PublicActor,
-  toolName?: PublicToolName
+  toolName?: PublicRouteToolName
 ): Promise<Response | null> {
   if (env.PUBLIC_ROUTE_RATE_LIMITER) {
     const { success } = await env.PUBLIC_ROUTE_RATE_LIMITER.limit({
@@ -160,6 +177,20 @@ export async function enforcePublicRateLimits(
 
     if (!success) {
       return rateLimitResponse("Public MCP get_visa rate limit exceeded");
+    }
+  }
+
+  if (
+    toolName &&
+    APPLICATION_WRITE_TOOLS.includes(toolName) &&
+    env.APPLICATION_WRITE_RATE_LIMITER
+  ) {
+    const { success } = await env.APPLICATION_WRITE_RATE_LIMITER.limit({
+      key: actor.id,
+    });
+
+    if (!success) {
+      return rateLimitResponse("Visa application rate limit exceeded");
     }
   }
 

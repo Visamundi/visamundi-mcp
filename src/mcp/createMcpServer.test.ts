@@ -5,6 +5,7 @@ import {
   createPublicMcpServer,
   PUBLIC_TOOL_NAMES,
 } from "./createPublicMcpServer.js";
+import { APPLICATION_TOOL_NAMES } from "../tools/applications.js";
 
 function getRegisteredToolNames(server: unknown): string[] {
   const registeredTools = (server as { _registeredTools?: Record<string, unknown> })
@@ -59,6 +60,21 @@ describe("MCP server factories", () => {
       "check-visa-requirements",
       "prepare-trip-briefing",
     ]);
+  });
+
+  it("adds the application tools and workflow docs when the form agent API is configured", () => {
+    const server = createPublicMcpServer({
+      connectToken: "public-token",
+      formAgentApi: { baseUrl: "https://form.test", apiKey: "k" },
+    });
+
+    expect(getRegisteredToolNames(server)).toEqual(
+      [...PUBLIC_TOOL_NAMES, ...APPLICATION_TOOL_NAMES].sort()
+    );
+    expect(getRegisteredResourceNames(server)).toContain(
+      "visamundi://docs/submit-visa-application"
+    );
+    expect(getRegisteredPromptNames(server)).toContain("submit-visa-application");
   });
 
   it("creates the partner server with only credential-allowed tools", () => {

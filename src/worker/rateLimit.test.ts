@@ -107,4 +107,39 @@ describe("public route access helpers", () => {
     expect(parsed.toolName).toBe("get_visa");
     expect(parsed.arguments).toEqual({ id: 42 });
   });
+  it("applies the write limiter to application write tools only", async () => {
+    const write = { limit: vi.fn().mockResolvedValue({ success: false }) };
+    const env = createEnv({ APPLICATION_WRITE_RATE_LIMITER: write });
+    const actor = { id: "anonymous:203.0.113.1", authMode: "anonymous" as const };
+
+    expect((await enforcePublicRateLimits(env, actor, "save_application"))?.status).toBe(429);
+    expect((await enforcePublicRateLimits(env, actor, "get_payment_link"))?.status).toBe(429);
+    expect(await enforcePublicRateLimits(env, actor, "get_application_form")).toBeNull();
+    expect(write.limit).toHaveBeenCalledWith({ key: "anonymous:203.0.113.1" });
+  });
+
+  it("lets browsers read rate-limit errors (CORS)", async () => {
+    const response = await enforcePublicRateLimits(
+      createEnv({
+        PUBLIC_ROUTE_RATE_LIMITER: { limit: vi.fn().mockResolvedValueOnce({ success: false }) },
+      }),
+      { id: "anonymous:x", authMode: "anonymous" }
+    );
+
+    expect(response?.headers.get("access-control-allow-origin")).toBe("*");
+  });
+
+  it("recognises application tool calls", async () => {
+    const parsed = await parsePublicMcpRequest(
+      new Request("https://example.com/", {
+        method: "POST",
+        body: JSON.stringify({
+          method: "tools/call",
+          params: { name: "save_application", arguments: { visaId: "1" } },
+        }),
+      })
+    );
+
+    expect(parsed.toolName).toBe("save_application");
+  });
 });

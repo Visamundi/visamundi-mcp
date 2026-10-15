@@ -6,7 +6,14 @@ import {
 } from "../tools/connect.js";
 import type { CredentialContext } from "../types.js";
 import {
+  registerApplicationTools,
+  type ApplicationToolCallEvent,
+  type FormAgentApiConfig,
+} from "../tools/applications.js";
+import {
+  APPLICATION_SERVER_INSTRUCTIONS,
   PUBLIC_SERVER_INSTRUCTIONS,
+  registerApplicationDocs,
   registerPublicVisamundiDocs,
 } from "./registerVisamundiDocs.js";
 
@@ -21,7 +28,9 @@ export const PUBLIC_TOOL_NAMES = [
 export interface PublicMcpServerOptions {
   connectToken?: string | null;
   cache?: ConnectCache;
-  onPublicToolCall?: (event: PublicToolCallEvent) => void;
+  onPublicToolCall?: (event: PublicToolCallEvent | ApplicationToolCallEvent) => void;
+  /** form-visamundi-next agent API; the application tools are registered only when set. */
+  formAgentApi?: FormAgentApiConfig | null;
 }
 
 export function createPublicCredentialContext(
@@ -47,7 +56,9 @@ export function createPublicMcpServer(
       version: "2.0.0",
     },
     {
-      instructions: PUBLIC_SERVER_INSTRUCTIONS,
+      instructions: options.formAgentApi
+        ? `${PUBLIC_SERVER_INSTRUCTIONS}\n\n${APPLICATION_SERVER_INSTRUCTIONS}`
+        : PUBLIC_SERVER_INSTRUCTIONS,
     }
   );
 
@@ -58,6 +69,13 @@ export function createPublicMcpServer(
     cache: options.cache,
     onPublicToolCall: options.onPublicToolCall,
   });
+
+  if (options.formAgentApi) {
+    registerApplicationDocs(server);
+    registerApplicationTools(server, options.formAgentApi, {
+      onToolCall: options.onPublicToolCall,
+    });
+  }
 
   return server;
 }

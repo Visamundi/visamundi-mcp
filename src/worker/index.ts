@@ -6,6 +6,7 @@ import { createPartnerMcpServer } from "../mcp/createPartnerMcpServer.js";
 import { createPublicMcpServer } from "../mcp/createPublicMcpServer.js";
 import {
   getConnectTokenFromEnv,
+  getFormAgentApiFromEnv,
   parseAllowedHosts,
   type WorkerEnv,
   type WorkerExecutionContext,
@@ -21,6 +22,9 @@ import {
   notePublicUpstreamFailure,
 } from "./publicCircuitBreaker.js";
 import { verifyPartnerBearer } from "./verifyPartnerBearer.js";
+import { enforcePublicDailyQuota } from "./dailyQuota.js";
+
+export { PublicDailyQuota } from "./dailyQuota.js";
 
 let hasWarnedAboutOpenPublicHostConfig = false;
 
@@ -146,6 +150,10 @@ function createPublicHandler(
         connectToken: getConnectTokenFromEnv(env),
         cache: createCloudflareCache(),
         onPublicToolCall: logPublicToolCall(request, env, ctx, actor),
+        formAgentApi: getFormAgentApiFromEnv(
+          env,
+          request.headers.get("cf-connecting-ip")
+        ),
       }),
     {
       route: "/",
@@ -211,6 +219,11 @@ export function createWorkerHandler() {
         );
         if (rateLimited) {
           return rateLimited;
+        }
+
+        const overQuota = await enforcePublicDailyQuota(env, actor, parsedRequest);
+        if (overQuota) {
+          return overQuota;
         }
 
         return createPublicHandler(env, request, ctx, actor).fetch(request, {

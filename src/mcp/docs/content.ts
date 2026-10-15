@@ -244,3 +244,27 @@ export const PARTNER_WORKFLOWS = `# Example partner workflows
 1. get_processing_load(country_code, visa_id?)
 2. get_delivery_window(record_id)
 `.trim();
+
+export const APPLICATION_SERVER_INSTRUCTIONS = `
+Submitting a visa application (get_application_form, save_application, get_payment_link):
+- These tools let you prepare a Visamundi application for the traveller and hand them a payment link. You never pay and never accept terms, consents or disclaimers on their behalf: the traveller does it on the payment page.
+- Workflow: get_visa (pick the product) → get_application_form(visaId) → save_application → repeat save_application with the returned applicationId and resumeToken until \`missing\` is empty → get_payment_link → give the link to the traveller.
+- Use only information the traveller gave you. Never invent names, dates of birth, passport numbers or addresses: ask for whatever \`missing\` lists.
+- Keep applicationId and resumeToken for the follow-up calls; do not show the resumeToken to the traveller.
+- Exception to the link rule above: you must share the payment link returned by get_payment_link, and you may quote the application reference and the total price.
+- Delivery date: if get_payment_link returns \`estimatedDelivery\`, present \`latestDate\` as an estimated latest date, never as a promise or guarantee, and always quote its \`condition\` (and \`cappedExplanation\` when present). If \`estimatedDelivery\` is null, do not give or guess any delivery date.
+- If a tool says the visa cannot be submitted by an agent, invite the traveller to apply on ${VISAMUNDI_FORM_URL}.
+`.trim();
+
+export const SUBMIT_APPLICATION_WORKFLOW = `# Submit a visa application for a traveller
+
+1. list_visas(destination, nationality) then get_visa(id): agree on the visa product with the traveller.
+2. get_application_form(visaId, language): read the required fields, the accepted purposes and nationalities, the date and passport constraints, the questionnaire and the options.
+3. Collect the answers from the traveller. Never invent personal or passport data.
+4. save_application(visaId, locale, values, travelers): creates the application. Keep applicationId and resumeToken.
+5. While \`missing\` is not empty: ask for the listed fields, then save_application(visaId, locale, applicationId, resumeToken, values, travelers). Travellers are merged by position.
+6. get_payment_link(applicationId, resumeToken): returns the payment link, the total and \`estimatedDelivery\` (estimated latest delivery date if the traveller pays now: an estimate, never a guarantee; quote its \`condition\`, and \`cappedExplanation\` when present; if null, give no date).
+7. Give the link to the traveller. On that page they check the application, accept the terms and pay. Visamundi then processes the application.
+
+Not supported by agents: priority processing, document-based visas and multi-country packs. For those, send the traveller to ${VISAMUNDI_FORM_URL}.
+`.trim();
