@@ -5,3 +5,6 @@ dist/
 .wrangler
 .cursor
 .mcp.json
+
+# Internal abuse probes, not published
+scripts/abuse-simulation/

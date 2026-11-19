@@ -69,7 +69,7 @@
 		}
 	],
 	"vars": {
-		"SUPABASE_URL": "https://ltnssjhpmlopbhliltys.supabase.co",
+		"SUPABASE_URL": "https://data.visamundi.app",
 		// Public publishable key (already shipped to browsers); sent to Supabase Auth to validate user tokens.
 		"SUPABASE_ANON_KEY": "sb_publishable_8E2_SJ7PXvSwLfC4-2hVbQ_LFXlLyad",
 		// Agent application tools: enabled only once the FORM_AGENT_API_KEY secret is set
