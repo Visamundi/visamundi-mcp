@@ -1,6 +1,35 @@
 # visamundi-mcp
 
-Cloudflare Worker MCP server for Visamundi public visa data and partner-scoped tools.
+[![MCP Registry](https://img.shields.io/badge/MCP%20Registry-io.visamundi%2Fvisa-blue)](https://registry.modelcontextprotocol.io/v0.1/servers?search=io.visamundi/visa)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+
+Remote [MCP](https://modelcontextprotocol.io) server for travel entry requirements: **visa, vaccine and customs data** by nationality and destination, plus optional visa application filing. Built by [Visamundi](https://www.visamundi.io) as a Cloudflare Worker.
+
+- **Endpoint:** `https://mcp.visamundi.io/` (streamable HTTP, no login for lookups)
+- **Registry name:** `io.visamundi/visa` ([official MCP Registry](https://registry.modelcontextprotocol.io/v0.1/servers?search=io.visamundi/visa))
+- **Lookups** are read-only and rate-limited. The application tools only create a draft and return a payment link: the agent never pays and never accepts terms.
+
+## Connect
+
+Claude Code:
+
+```bash
+claude mcp add --transport http visamundi https://mcp.visamundi.io/
+```
+
+Any MCP client that supports remote servers (JSON config):
+
+```json
+{
+  "mcpServers": {
+    "visamundi": { "type": "http", "url": "https://mcp.visamundi.io/" }
+  }
+}
+```
+
+Example questions: *"Do I need a visa for Kenya as a French citizen?"*, *"What vaccines and customs rules apply for Thailand?"*, *"Start my Kenya e-visa."*
+
+The rest of this README describes the server's internals and how to run your own instance.
 
 ## What it serves
 
@@ -165,27 +194,6 @@ Example hash command:
 node -e 'console.log(require("node:crypto").createHash("sha256").update(process.argv[1]).digest("hex"))' "replace-me"
 ```
 
-### Abuse simulation scripts
-
-The `scripts/abuse-simulation/` directory contains staging-only probes for:
-
-- Response auditing for `list_visas`, `get_visa`, and `get_visa_requirements`
-- Sequential `get_visa` enumeration
-- `get_visa_requirements` matrix sweeps
-- Sustained public-route load tests
-
-Set `MCP_BASE_URL` to a staging deployment before running them. Optional
-`PUBLIC_MCP_KEY` is supported if the public route requires a key.
-
-```bash
-MCP_BASE_URL="https://staging.example.com/" npm run abuse:audit
-MCP_BASE_URL="https://staging.example.com/" START_ID=1 END_ID=250 npm run abuse:get-visa
-MCP_BASE_URL="https://staging.example.com/" NATIONALITIES=FR,GB,US DESTINATIONS=TH,VN,IN npm run abuse:requirements
-MCP_BASE_URL="https://staging.example.com/" DURATION_SECONDS=60 CONCURRENCY=10 npm run abuse:sustain
-```
-
-Do not point these scripts at production unless you explicitly want to validate
-enforcement thresholds there.
 
 ## Notes
 
